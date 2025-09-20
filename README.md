@@ -131,6 +131,13 @@ pack-agents/
 
 ## 📊 API 文档
 
+### Claude 执行 API (核心)
+
+- `POST /api/claude/agents/{id}/execute` - 执行 Claude Agent
+- `POST /api/claude/agents/{id}/execute/stream` - 流式执行 (SSE)
+- `POST /api/claude/workflows/{id}/execute` - 执行 Claude 工作流
+- `GET /api/claude/mcp/tools` - 获取 MCP 工具列表
+
 ### 配置管理
 
 - `GET /api/config` - 获取系统配置概览
@@ -197,10 +204,11 @@ pack-agents/
 
 感谢以下开源项目：
 
+- [Claude Code SDK](https://github.com/anthropics/claude-code) - 核心AI引擎
 - [Next.js](https://nextjs.org/) - React 全栈框架
-- [Ant Design](https://ant.design/) - 企业级 UI 组件库
 - [Ant Design X](https://x.ant.design/) - AI 原生组件库
-- [LangChain](https://langchain.com/) - AI 应用开发框架
+- [Ant Design](https://ant.design/) - 企业级 UI 组件库
+- [LangChain](https://langchain.com/) - 辅助工具开发框架
 - [Claude](https://claude.ai/) - Anthropic AI 助手
 
 ---
