@@ -1,0 +1,235 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 引入无障碍样式 */
+@import './accessibility.css';
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body {
+    @apply bg-white text-gray-900;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    overflow: hidden; /* 防止全局滚动条 */
+  }
+  
+  #__next {
+    height: 100%;
+  }
+}
+
+@layer components {
+  .animate-in {
+    @apply animate-fade-in;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .glass {
+    @apply backdrop-blur-md bg-white/10 border border-white/20;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  .gradient-bg {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .agent-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .agent-main {
+    @apply agent-badge bg-green-100 text-green-800;
+  }
+  
+  .agent-sub {
+    @apply agent-badge bg-blue-100 text-blue-800;
+  }
+  
+  .agent-synthesis {
+    @apply agent-badge bg-purple-100 text-purple-800;
+  }
+  
+  .status-pending {
+    @apply agent-badge bg-gray-100 text-gray-800;
+  }
+  
+  .status-running {
+    @apply agent-badge bg-blue-100 text-blue-800;
+  }
+  
+  .status-completed {
+    @apply agent-badge bg-green-100 text-green-800;
+  }
+  
+  .status-failed {
+    @apply agent-badge bg-red-100 text-red-800;
+  }
+  
+  .status-paused {
+    @apply agent-badge bg-orange-100 text-orange-800;
+  }
+}
+
+/* Ant Design X 样式覆盖 */
+.ant-conversations {
+  @apply bg-transparent;
+}
+
+.ant-bubble {
+  @apply rounded-lg shadow-sm;
+}
+
+.ant-welcome {
+  @apply bg-gradient-to-br from-blue-50 to-purple-50;
+}
+
+.ant-prompts {
+  @apply bg-white rounded-lg border shadow-sm;
+}
+
+.ant-sender {
+  @apply border-t bg-white;
+}
+
+.ant-thought-chain {
+  @apply bg-gray-50 rounded-lg p-4;
+}
+
+/* 自定义滚动条 */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 代码块样式 */
+.code-block {
+  @apply bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto;
+}
+
+.code-block pre {
+  @apply text-sm leading-relaxed;
+}
+
+/* 加载动画 */
+.loading-dots {
+  @apply inline-flex space-x-1;
+}
+
+.loading-dots span {
+  @apply w-2 h-2 bg-blue-500 rounded-full animate-pulse;
+  animation-delay: var(--delay);
+}
+
+.loading-dots span:nth-child(1) {
+  --delay: 0ms;
+}
+
+.loading-dots span:nth-child(2) {
+  --delay: 150ms;
+}
+
+.loading-dots span:nth-child(3) {
+  --delay: 300ms;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .mobile-hidden {
+    @apply hidden;
+  }
+  
+  .mobile-full {
+    @apply w-full;
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .no-print {
+    @apply hidden;
+  }
+  
+  .print-break {
+    page-break-after: always;
+  }
+}

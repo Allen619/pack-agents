@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+.swc/
+.vscode/
+
+logs/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Pack Agents specific
+/config/agents/instances/*.json
+/config/executions/
+/config/logs/
+/backups/
+
+
+/docs
+Architecture_Design.md
+
+schedule.md
