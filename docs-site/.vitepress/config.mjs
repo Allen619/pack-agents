@@ -2,27 +2,23 @@ import { defineConfig } from 'vitepress';
 
 export default defineConfig({
   title: 'Pack Agents',
-  description: 'Pack Agents 多智能体工作流管理平台用户文档',
+  description: 'Pack Agents 多智能体工作流平台用户文档',
   lang: 'zh-CN',
-
-  // 基础配置
   base: '/',
   cleanUrls: true,
   ignoreDeadLinks: false,
   lastUpdated: true,
 
-  // 主题配置
   themeConfig: {
-    // 导航栏
     nav: [
       { text: '首页', link: '/' },
       { text: '快速开始', link: '/user/getting-started/introduction' },
       { text: '核心功能', link: '/user/core-features/agent-factory' },
       { text: '故障排除', link: '/user/troubleshooting/faq' },
       { text: 'API 参考', link: '/user/reference/api-reference' },
+      { text: '安全指南', link: '/security/llm-secret-management' },
     ],
 
-    // 侧边栏
     sidebar: {
       '/user/': [
         {
@@ -39,17 +35,16 @@ export default defineConfig({
           collapsed: false,
           items: [
             { text: 'Agent 工厂', link: '/user/core-features/agent-factory' },
-            {
-              text: '工作流编排',
-              link: '/user/core-features/workflow-orchestration',
-            },
+            { text: '工作流编排', link: '/user/core-features/workflow-orchestration' },
             { text: '实用案例', link: '/user/core-features/use-cases' },
           ],
         },
         {
           text: '故障排除',
           collapsed: false,
-          items: [{ text: '常见问题', link: '/user/troubleshooting/faq' }],
+          items: [
+            { text: '常见问题', link: '/user/troubleshooting/faq' },
+          ],
         },
         {
           text: '最佳实践',
@@ -68,9 +63,17 @@ export default defineConfig({
           ],
         },
       ],
+      '/security/': [
+        {
+          text: '安全指南',
+          collapsed: false,
+          items: [
+            { text: 'LLM 密钥管理', link: '/security/llm-secret-management' },
+          ],
+        },
+      ],
     },
 
-    // 搜索
     search: {
       provider: 'local',
       options: {
@@ -82,8 +85,8 @@ export default defineConfig({
                 buttonAriaLabel: '搜索文档',
               },
               modal: {
-                noResultsText: '无法找到相关结果',
-                resetButtonTitle: '清除查询条件',
+                noResultsText: '未找到匹配结果',
+                resetButtonTitle: '清除搜索条件',
                 footer: {
                   selectText: '选择',
                   navigateText: '切换',
@@ -96,27 +99,22 @@ export default defineConfig({
       },
     },
 
-    // 社交链接
     socialLinks: [
       { icon: 'github', link: 'https://github.com/Allen619/pack-agents' },
     ],
 
-    // 页脚
     footer: {
       message: 'Released under the MIT License.',
       copyright: 'Copyright © 2025 Pack Agents Team',
     },
 
-    // 编辑链接
     editLink: {
-      pattern:
-        'https://github.com/Allen619/pack-agents/edit/main/docs-site/:path',
+      pattern: 'https://github.com/Allen619/pack-agents/edit/main/docs-site/:path',
       text: '在 GitHub 上编辑此页面',
     },
 
-    // 上次更新时间
     lastUpdated: {
-      text: '最后更新于',
+      text: '最后更新时间',
       formatOptions: {
         dateStyle: 'short',
         timeStyle: 'medium',
@@ -124,31 +122,23 @@ export default defineConfig({
       },
     },
 
-    // 上下页导航
     docFooter: {
       prev: '上一页',
       next: '下一页',
     },
 
-    // 大纲设置
     outline: {
       level: [2, 3],
       label: '页面导航',
     },
 
-    // 返回顶部
     returnToTopLabel: '回到顶部',
-
-    // 侧边栏菜单标签
     sidebarMenuLabel: '菜单',
-
-    // 暗色模式开关标签
     darkModeSwitchLabel: '主题',
     lightModeSwitchTitle: '切换到浅色模式',
     darkModeSwitchTitle: '切换到深色模式',
   },
 
-  // markdown 配置
   markdown: {
     lineNumbers: true,
     container: {
@@ -160,7 +150,6 @@ export default defineConfig({
     },
   },
 
-  // 构建配置
   build: {
     outDir: '../dist-docs',
   },

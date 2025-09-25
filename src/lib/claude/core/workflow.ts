@@ -14,13 +14,13 @@ export interface ClaudeWorkflowConfig {
   // 主要Agent（负责整体规划和协调）
   mainAgent: {
     agentId: string;
-    role: 'coordinator';
+    role: 'main';
   };
 
   // 专业Agent团队
   specialists: Array<{
     agentId: string;
-    role: 'specialist';
+    role: 'sub';
     specialty: string; // 'code-analysis' | 'code-generation' | 'testing' | 'documentation'
   }>;
 

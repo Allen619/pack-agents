@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, message } from 'antd';
 import AppLayout from '@/components/layout/AppLayout';
@@ -21,7 +21,10 @@ export default function CreateAgentPage() {
       
       if (newAgent) {
         message.success('Agent 创建成功');
-        router.push('/agents');
+        startTransition(() => {
+          router.replace('/agents');
+          router.refresh();
+        });
       }
     } catch (error) {
       message.error('创建失败');

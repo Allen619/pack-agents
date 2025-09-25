@@ -12,7 +12,7 @@ Pack Agents 提供的 REST API 接口详细说明。
 ### 基础 URL
 
 ```
-http://localhost:3001/api
+http://localhost:3000/api
 ```
 
 ### 认证方式
@@ -507,7 +507,7 @@ npm install @pack-agents/client
 import { PackAgentsClient } from '@pack-agents/client';
 
 const client = new PackAgentsClient({
-  baseUrl: 'http://localhost:3001/api',
+  baseUrl: 'http://localhost:3000/api',
 });
 
 // 获取 Agent 列表
@@ -538,7 +538,7 @@ pip install pack-agents-client
 ```python
 from pack_agents import PackAgentsClient
 
-client = PackAgentsClient(base_url="http://localhost:3001/api")
+client = PackAgentsClient(base_url="http://localhost:3000/api")
 
 # 获取 Agent 列表
 agents = client.agents.list()

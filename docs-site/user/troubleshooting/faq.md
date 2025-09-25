@@ -380,7 +380,7 @@ grep "agent_id_here" ./logs/execution.log
 ```bash
 # 使用 cron 定时执行
 # 每天早上8点运行数据分析工作流
-0 8 * * * curl -X POST "http://localhost:3001/api/workflows/daily-analysis/execute"
+0 8 * * * curl -X POST "http://localhost:3000/api/workflows/daily-analysis/execute"
 
 # 使用 GitHub Actions 触发
 # 代码提交时自动执行质量检查
@@ -440,7 +440,7 @@ window.__performance__.getReport()
 
 ```bash
 # 使用 curl 监控 API 响应时间
-curl -w "@curl-format.txt" -o /dev/null -s "http://localhost:3001/api/config"
+curl -w "@curl-format.txt" -o /dev/null -s "http://localhost:3000/api/config"
 
 # curl-format.txt 内容:
 #      time_namelookup:  %{time_namelookup}\n

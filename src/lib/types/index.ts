@@ -1,6 +1,6 @@
 // Pack Agents 核心类型定义 - 基于 Claude Code SDK
 
-export type AgentRole = 'main' | 'specialist' | 'coordinator';
+export type AgentRole = 'main' | 'sub' | 'synthesis';
 export type AgentStatus = 'active' | 'inactive' | 'archived';
 
 // Claude Code SDK 相关类型
@@ -45,14 +45,22 @@ export interface ClaudeAgentConfig {
 // 兼容性类型定义（保持向后兼容）
 export interface LLMConfig {
   provider: 'claude' | 'openai' | 'others';
-  model: string;
-  apiKey: string; // 加密存储
+  model?: string;
+  baseUrl: string;
+  apiKey: string;
+  capabilities: {
+    language: boolean;
+    vision: boolean;
+    web: boolean;
+  };
   parameters: {
     temperature?: number;
     maxTokens?: number;
     topP?: number;
     [key: string]: any;
   };
+}
+  parameters: {
 }
 
 export interface AgentConfig {
@@ -90,7 +98,6 @@ export interface MCPServerConfig {
 export interface MCPTool {
   name: string;
   description: string;
-  parameters: any;
   serverName?: string;
 }
 
@@ -388,13 +395,13 @@ export interface ClaudeWorkflowConfig {
   // 主要Agent（负责整体规划和协调）
   mainAgent: {
     agentId: string;
-    role: 'coordinator';
+    role: 'main';
   };
 
   // 专业Agent团队
   specialists: Array<{
     agentId: string;
-    role: 'specialist';
+    role: 'sub';
     specialty: string; // 'code-analysis' | 'code-generation' | 'testing' | 'documentation'
   }>;
 

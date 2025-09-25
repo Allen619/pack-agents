@@ -4,7 +4,7 @@
   "description": "多Agent工作流管理平台 - 基于Claude Code SDK的AI工具平台",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev && npm run docs:dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

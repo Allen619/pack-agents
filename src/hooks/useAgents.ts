@@ -8,15 +8,9 @@ export interface UseAgentsReturn {
   loading: boolean;
   error: string | null;
   createAgent: (agentData: Partial<AgentConfig>) => Promise<AgentConfig | null>;
-  updateAgent: (
-    id: string,
-    updates: Partial<AgentConfig>
-  ) => Promise<AgentConfig | null>;
+  updateAgent: (id: string, updates: Partial<AgentConfig>) => Promise<AgentConfig | null>;
   deleteAgent: (id: string) => Promise<boolean>;
-  createFromTemplate: (
-    templateId: string,
-    overrides?: Partial<AgentConfig>
-  ) => Promise<AgentConfig | null>;
+  createFromTemplate: (templateId: string, overrides?: Partial<AgentConfig>) => Promise<AgentConfig | null>;
   refreshAgents: () => Promise<void>;
   refreshTemplates: () => Promise<void>;
 }
@@ -32,13 +26,13 @@ export function useAgents(): UseAgentsReturn {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/agents');
+      const response = await fetch('/api/agents', { cache: 'no-store' });
       const result: ApiResponse<AgentConfig[]> = await response.json();
 
       if (result.success) {
         setAgents(result.data || []);
       } else {
-        setError(result.error?.message || '获取Agent列表失败');
+        setError(result.error?.message || '获取 Agent 列表失败');
       }
     } catch (err) {
       setError('网络请求失败');
@@ -50,7 +44,7 @@ export function useAgents(): UseAgentsReturn {
 
   const refreshTemplates = useCallback(async () => {
     try {
-      const response = await fetch('/api/agents/templates');
+      const response = await fetch('/api/agents/templates', { cache: 'no-store' });
       const result: ApiResponse<AgentTemplate[]> = await response.json();
 
       if (result.success) {
@@ -69,6 +63,7 @@ export function useAgents(): UseAgentsReturn {
         setError(null);
 
         const response = await fetch('/api/agents', {
+          cache: 'no-store',
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(agentData),
@@ -77,10 +72,10 @@ export function useAgents(): UseAgentsReturn {
         const result: ApiResponse<AgentConfig> = await response.json();
 
         if (result.success && result.data) {
-          setAgents((prev) => [result.data!, ...prev]);
+          await refreshAgents();
           return result.data;
         } else {
-          setError(result.error?.message || '创建Agent失败');
+          setError(result.error?.message || '创建 Agent 失败');
           return null;
         }
       } catch (err) {
@@ -89,14 +84,11 @@ export function useAgents(): UseAgentsReturn {
         return null;
       }
     },
-    []
+    [refreshAgents]
   );
 
   const updateAgent = useCallback(
-    async (
-      id: string,
-      updates: Partial<AgentConfig>
-    ): Promise<AgentConfig | null> => {
+    async (id: string, updates: Partial<AgentConfig>): Promise<AgentConfig | null> => {
       try {
         setError(null);
 
@@ -109,12 +101,10 @@ export function useAgents(): UseAgentsReturn {
         const result: ApiResponse<AgentConfig> = await response.json();
 
         if (result.success && result.data) {
-          setAgents((prev) =>
-            prev.map((agent) => (agent.id === id ? result.data! : agent))
-          );
+          setAgents((prev) => prev.map((agent) => (agent.id === id ? result.data! : agent)));
           return result.data;
         } else {
-          setError(result.error?.message || '更新Agent失败');
+          setError(result.error?.message || '更新 Agent 失败');
           return null;
         }
       } catch (err) {
@@ -140,7 +130,7 @@ export function useAgents(): UseAgentsReturn {
         setAgents((prev) => prev.filter((agent) => agent.id !== id));
         return true;
       } else {
-        setError(result.error?.message || '删除Agent失败');
+        setError(result.error?.message || '删除 Agent 失败');
         return false;
       }
     } catch (err) {
@@ -151,14 +141,12 @@ export function useAgents(): UseAgentsReturn {
   }, []);
 
   const createFromTemplate = useCallback(
-    async (
-      templateId: string,
-      overrides?: Partial<AgentConfig>
-    ): Promise<AgentConfig | null> => {
+    async (templateId: string, overrides?: Partial<AgentConfig>): Promise<AgentConfig | null> => {
       try {
         setError(null);
 
         const response = await fetch('/api/agents/templates', {
+          cache: 'no-store',
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ templateId, overrides }),
@@ -167,10 +155,10 @@ export function useAgents(): UseAgentsReturn {
         const result: ApiResponse<AgentConfig> = await response.json();
 
         if (result.success && result.data) {
-          setAgents((prev) => [result.data!, ...prev]);
+          await refreshAgents();
           return result.data;
         } else {
-          setError(result.error?.message || '从模板创建Agent失败');
+          setError(result.error?.message || '从模板创建 Agent 失败');
           return null;
         }
       } catch (err) {
@@ -179,7 +167,7 @@ export function useAgents(): UseAgentsReturn {
         return null;
       }
     },
-    []
+    [refreshAgents]
   );
 
   useEffect(() => {

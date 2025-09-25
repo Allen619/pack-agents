@@ -170,11 +170,13 @@ export class ConfigManager {
   // Agent 操作
   async saveAgent(agent: AgentConfig): Promise<void> {
     agent.metadata.updatedAt = new Date().toISOString();
+
     const filePath = path.join(
       this.configRoot,
       'agents/instances',
       `${agent.id}.json`
     );
+
     await fs.writeFile(filePath, JSON.stringify(agent, null, 2), 'utf-8');
   }
 
@@ -266,15 +268,22 @@ export class ConfigManager {
       description: overrides?.description || template.description,
       role: template.role,
       systemPrompt: template.systemPrompt,
-      llmConfig: overrides?.llmConfig || {
-        provider: 'claude',
-        model: 'claude-sonnet-4-20250514',
-        apiKey: process.env.CLAUDE_API_KEY || '',
-        parameters: {
-          temperature: 0.1,
-          maxTokens: 4000,
-        },
-      },
+      llmConfig: overrides?.llmConfig || {
+        provider: 'claude',
+        model: '',
+        baseUrl: 'https://api.anthropic.com',
+        apiKey: '',
+        capabilities: {
+          language: true,
+          vision: false,
+          web: false,
+        },
+        parameters: {
+          temperature: 0.1,
+          maxTokens: 4000,
+          topP: 0.9,
+        },
+      },
       knowledgeBasePaths: overrides?.knowledgeBasePaths || ['./src', './docs'],
       enabledTools: template.enabledTools,
       metadata: {

@@ -5,6 +5,7 @@ import {
   Form,
   Input,
   Select,
+  Checkbox,
   Button,
   Card,
   Space,
@@ -45,6 +46,14 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 const { TabPane } = Tabs;
 
+const MASKED_API_KEY = '********';
+
+const LLM_CAPABILITY_OPTIONS = [
+  { label: '语言模型', value: 'language' },
+  { label: '视觉模型', value: 'vision' },
+  { label: '联网模型', value: 'web' },
+];
+
 interface EnhancedAgentConfigFormProps {
   initialData?: AgentConfig;
   onSubmit: (data: Partial<AgentConfig>) => Promise<void>;
@@ -83,12 +92,16 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
   useEffect(() => {
     const checkValidation = () => {
       const values = form.getFieldsValue();
+      const capabilitySelections = Array.isArray(values.capabilities) ? values.capabilities : [];
+      const hasBaseUrl = typeof values.baseUrl === 'string' && values.baseUrl.trim().length > 0;
+      const hasApiKey = typeof values.apiKey === 'string' && values.apiKey.trim().length > 0;
+
       setValidationStatus({
         basic: !!(values.name && values.role),
         prompt: !!(values.systemPrompt && values.systemPrompt.length > 50),
         knowledge: knowledgePaths.length > 0,
         tools: Object.values(toolConfigs).some((config: any) => config.enabled),
-        llm: !!(values.provider && values.model),
+        llm: capabilitySelections.length > 0 && hasBaseUrl && hasApiKey,
       });
     };
 
@@ -98,6 +111,12 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
   // 初始化表单数据
   useEffect(() => {
     if (initialData) {
+      const capabilities = initialData.llmConfig?.capabilities || {};
+      const capabilitySelections: string[] = [];
+      if (capabilities.language !== false) capabilitySelections.push('language');
+      if (capabilities.vision) capabilitySelections.push('vision');
+      if (capabilities.web) capabilitySelections.push('web');
+
       form.setFieldsValue({
         name: initialData.name,
         description: initialData.description,
@@ -105,13 +124,26 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
         systemPrompt: initialData.systemPrompt,
         provider: initialData.llmConfig?.provider,
         model: initialData.llmConfig?.model,
-        apiKey: initialData.llmConfig?.apiKey,
+        baseUrl: initialData.llmConfig?.baseUrl,
+        capabilities: capabilitySelections.length ? capabilitySelections : ['language'],
+        apiKey: initialData.llmConfig?.apiKey ? MASKED_API_KEY : '',
         temperature: initialData.llmConfig?.parameters?.temperature ?? 0.1,
         maxTokens: initialData.llmConfig?.parameters?.maxTokens ?? 4000,
         topP: initialData.llmConfig?.parameters?.topP ?? 0.9,
       });
       setKnowledgePaths(initialData.knowledgeBasePaths || []);
       setToolConfigs(initialData.toolConfigs || {});
+    } else {
+      form.setFieldsValue({
+        provider: 'claude',
+        model: '',
+        baseUrl: 'https://api.anthropic.com',
+        capabilities: ['language'],
+        apiKey: '',
+        temperature: 0.1,
+        maxTokens: 4000,
+        topP: 0.9,
+      });
     }
   }, [initialData, form]);
 
@@ -119,7 +151,28 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
     try {
       setSubmitLoading(true);
 
-      // 提取启用的工具列表
+      const rawApiKey = typeof values.apiKey === 'string' ? values.apiKey.trim() : '';
+      const apiKey = rawApiKey === MASKED_API_KEY ? initialData?.llmConfig?.apiKey : rawApiKey;
+      const capabilitySelections: string[] = Array.isArray(values.capabilities) ? values.capabilities : [];
+
+      if (!values.baseUrl || !values.baseUrl.trim()) {
+        message.error('请输入模型地址');
+        setSubmitLoading(false);
+        return;
+      }
+
+      if (!apiKey) {
+        message.error('请输入密钥');
+        setSubmitLoading(false);
+        return;
+      }
+
+      const capabilities = {
+        language: capabilitySelections.includes('language'),
+        vision: capabilitySelections.includes('vision'),
+        web: capabilitySelections.includes('web'),
+      };
+
       const enabledTools = Object.entries(toolConfigs)
         .filter(([_, config]: [string, any]) => config.enabled)
         .map(([toolKey, _]) => toolKey);
@@ -132,8 +185,10 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
         systemPrompt: values.systemPrompt,
         llmConfig: {
           provider: values.provider,
-          model: values.model,
-          apiKey: values.apiKey || '',
+          model: values.model || undefined,
+          baseUrl: values.baseUrl.trim(),
+          apiKey,
+          capabilities,
           parameters: {
             temperature: values.temperature,
             maxTokens: values.maxTokens,
@@ -154,13 +209,13 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
       };
 
       await onSubmit(agentData);
-      message.success(initialData ? 'Agent 更新成功！' : 'Agent 创建成功！');
+      message.success(initialData ? 'Agent 更新成功' : 'Agent 创建成功');
     } catch (error) {
-      message.error('操作失败：' + (error as Error).message);
+      message.error('操作失败: ' + (error as Error).message);
     } finally {
       setSubmitLoading(false);
     }
-  };
+  };;
 
   const validateCurrentTab = () => {
     switch (activeTab) {
@@ -409,15 +464,15 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
 
           {/* LLM 配置标签页 */}
           {activeTab === 'llm' && (
-            <Card title="LLM 模型配置">
+            <Card title="LLM 配置">
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
-                    label="LLM 提供商"
+                    label="LLM 提供者"
                     name="provider"
-                    rules={[{ required: true, message: '请选择 LLM 提供商' }]}
+                    rules={[{ required: true, message: '请选择 LLM 提供者' }]}
                   >
-                    <Select placeholder="选择提供商" size="large">
+                    <Select placeholder="选择提供者" size="large">
                       <Option value="claude">
                         <Space>
                           <Tag color="blue">Claude</Tag>
@@ -427,7 +482,13 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
                       <Option value="openai">
                         <Space>
                           <Tag color="green">OpenAI</Tag>
-                          GPT 系列模型
+                          OpenAI GPT 系列
+                        </Space>
+                      </Option>
+                      <Option value="custom">
+                        <Space>
+                          <Tag color="default">Custom</Tag>
+                          自定义 Provider
                         </Space>
                       </Option>
                     </Select>
@@ -435,45 +496,51 @@ export const EnhancedAgentConfigForm: React.FC<EnhancedAgentConfigFormProps> = (
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    label="模型"
-                    name="model"
-                    rules={[{ required: true, message: '请选择模型' }]}
+                    label="模型地址"
+                    name="baseUrl"
+                    rules={[{ required: true, message: '请输入模型地址' }]}
                   >
-                    <Select placeholder="选择模型" size="large">
-                      {form.getFieldValue('provider') === 'claude' ? (
-                        <>
-                          <Option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</Option>
-                          <Option value="claude-3-haiku-20240307">Claude 3 Haiku</Option>
-                        </>
-                      ) : (
-                        <>
-                          <Option value="gpt-4">GPT-4</Option>
-                          <Option value="gpt-3.5-turbo">GPT-3.5 Turbo</Option>
-                        </>
-                      )}
-                    </Select>
+                    <Input placeholder="例如 https://api.anthropic.com" size="large" />
                   </Form.Item>
                 </Col>
               </Row>
 
               <Form.Item
-                label={
-                  <Space>
-                    API 密钥
-                    <Tooltip title="API 密钥将被加密存储">
-                      <InfoCircleOutlined />
-                    </Tooltip>
-                  </Space>
-                }
-                name="apiKey"
+                label="模型类型"
+                name="capabilities"
+                rules={[{ required: true, message: '请至少选择一种模型类型' }]}
               >
-                <Input.Password 
-                  placeholder="输入 API 密钥"
-                  size="large"
-                />
+                <Checkbox.Group options={LLM_CAPABILITY_OPTIONS} />
               </Form.Item>
 
-              <Divider>模型参数</Divider>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label="模型名称"
+                    name="model"
+                  >
+                    <Input placeholder="可选，例如 claude-sonnet-4" size="large" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label={
+                      <Space>
+                        API Key
+                        <Tooltip title="密钥仅在界面展示，保存时会写入配置">
+                          <InfoCircleOutlined />
+                        </Tooltip>
+                      </Space>
+                    }
+                    name="apiKey"
+                    rules={[{ required: true, message: '请输入密钥' }]}
+                  >
+                    <Input.Password placeholder="请输入密钥" size="large" visibilityToggle />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+            <Divider>模型参数</Divider>
 
               <Row gutter={16}>
                 <Col span={8}>

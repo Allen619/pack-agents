@@ -129,19 +129,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
         trigger={null} 
         collapsible 
         collapsed={collapsed}
-        className="shadow-lg border-r border-gray-200"
+        className="border-r border-gray-200 shadow-lg"
         width={240}
         style={{ background: '#fff' }}
       >
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <RobotOutlined className="text-white text-lg" />
+            <div className="flex flex-shrink-0 justify-center items-center w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+              <RobotOutlined className="text-lg text-white" />
             </div>
             {!collapsed && (
               <div className="overflow-hidden">
-                <div className="text-gray-900 font-bold text-lg truncate">Pack Agents</div>
-                <div className="text-gray-500 text-xs truncate">AI工作流平台</div>
+                <div className="text-lg font-bold text-gray-900 truncate">Pack Agents</div>
+                <div className="text-xs text-gray-500 truncate">AI工作流平台</div>
               </div>
             )}
           </div>
@@ -153,7 +153,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           selectedKeys={getSelectedKeys()}
           defaultOpenKeys={getOpenKeys()}
           items={menuItems}
-          className="border-none h-full"
+          className="h-full border-none"
           style={{ 
             background: 'transparent',
             borderRight: 0
@@ -180,7 +180,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </Sider>
 
       <Layout className="h-full">
-        <Header className="flex items-center justify-between px-6 shadow-sm" style={{ height: '64px', flexShrink: 0 }}>
+        <Header className="flex justify-between items-center px-6 shadow-sm" style={{ height: '64px', flexShrink: 0 }}>
           <Button
             type="text"
             icon={collapsed ? <MenuOutlined /> : <MenuFoldOutlined />}
@@ -191,7 +191,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <Space>
             <Button 
               icon={<FileTextOutlined />}
-              onClick={() => window.open('http://localhost:5174', '_blank')}
+              onClick={() => window.open('http://localhost:5173', '_blank')}
             >
               文档
             </Button>
@@ -205,8 +205,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </Space>
         </Header>
 
-        <Content className="flex-1 overflow-auto bg-gray-50">
-          <div className="h-full overflow-y-auto">
+        <Content className="overflow-auto flex-1 bg-gray-50">
+          <div className="overflow-y-auto h-full">
             {children}
           </div>
         </Content>

@@ -7,7 +7,7 @@ export interface ClaudeAgentConfig {
   id: string;
   name: string;
   description: string;
-  role: 'main' | 'specialist' | 'coordinator';
+  role: 'main' | 'sub' | 'synthesis';
 
   // Claude Code SDK 核心配置
   claudeConfig: {

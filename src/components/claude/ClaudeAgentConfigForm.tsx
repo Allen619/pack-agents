@@ -74,9 +74,9 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
 
   // Agent角色选项
   const roleOptions = [
-    { value: 'main', label: '主要Agent', description: '负责主要任务执行' },
-    { value: 'specialist', label: '专家Agent', description: '专门处理特定领域任务' },
-    { value: 'coordinator', label: '协调Agent', description: '负责工作流协调和管理' },
+    { value: 'main', label: '主要Agent', description: '负责整体规划与协调' },
+    { value: 'sub', label: '执行Agent', description: '专注具体任务执行' },
+    { value: 'synthesis', label: '综合Agent', description: '负责结果整合与复核' },
   ];
 
   // 初始化表单数据
@@ -96,7 +96,7 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
 
       // 设置环境变量
       const envVarArray = Object.entries(agent.context.environmentVariables || {})
-        .map(([key, value]) => ({ key, value }));
+        .map(([key, value]) => ({ key, value: String(value) }));
       setEnvVars(envVarArray);
 
       // 设置MCP服务器
@@ -151,7 +151,7 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
           mcpServers: Object.keys(mcpServersConfig).length > 0 ? mcpServersConfig : undefined,
         },
         context: {
-          knowledgeBasePaths,
+          knowledgeBasePaths: knowledgePaths,
           workingDirectory: process.cwd(), // 默认为当前目录
           environmentVariables: Object.keys(environmentVariables).length > 0 ? environmentVariables : undefined,
         },
@@ -407,7 +407,7 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
               <div key={index} className="flex mb-2">
                 <Input
                   value={path}
-                  onChange={(e) => updateKnowledgePath(index, e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateKnowledgePath(index, e.target.value)}
                   placeholder="输入知识库目录路径"
                   className="flex-1"
                 />
@@ -439,13 +439,13 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
               <div key={index} className="flex mb-2">
                 <Input
                   value={envVar.key}
-                  onChange={(e) => updateEnvVar(index, 'key', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateEnvVar(index, 'key', e.target.value)}
                   placeholder="变量名"
                   className="flex-1 mr-2"
                 />
                 <Input
                   value={envVar.value}
-                  onChange={(e) => updateEnvVar(index, 'value', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateEnvVar(index, 'value', e.target.value)}
                   placeholder="变量值"
                   className="flex-1"
                 />
@@ -500,7 +500,7 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
                 <Col span={8}>
                   <Input
                     value={server.key}
-                    onChange={(e) => updateMcpServer(index, e.target.value, server.config)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateMcpServer(index, e.target.value, server.config)}
                     placeholder="服务器键名"
                     size="small"
                   />
@@ -508,7 +508,7 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
                 <Col span={8}>
                   <Input
                     value={server.config.name}
-                    onChange={(e) => updateMcpServer(index, server.key, { ...server.config, name: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateMcpServer(index, server.key, { ...server.config, name: e.target.value })}
                     placeholder="服务器名称"
                     size="small"
                   />
@@ -516,7 +516,7 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
                 <Col span={8}>
                   <Input
                     value={server.config.command}
-                    onChange={(e) => updateMcpServer(index, server.key, { ...server.config, command: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateMcpServer(index, server.key, { ...server.config, command: e.target.value })}
                     placeholder="启动命令"
                     size="small"
                   />

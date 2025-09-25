@@ -30,7 +30,7 @@ export interface ClaudeWorkflowCanvasProps {
 export interface WorkflowNode extends Node {
   data: {
     label: string;
-    type: 'coordinator' | 'specialist' | 'start' | 'end';
+    type: 'main' | 'sub' | 'start' | 'end';
     agentId?: string;
     specialty?: string;
     status?: 'idle' | 'running' | 'completed' | 'failed' | 'paused';
@@ -91,7 +91,7 @@ export const ClaudeWorkflowCanvas: React.FC<ClaudeWorkflowCanvasProps> = ({
         position: { x: 300, y: 100 },
         data: {
           label: '主协调器',
-          type: 'coordinator',
+          type: 'main',
           agentId: workflow.mainAgent.agentId,
           status: 'idle',
         },
@@ -116,7 +116,7 @@ export const ClaudeWorkflowCanvas: React.FC<ClaudeWorkflowCanvasProps> = ({
           position: { x: 500, y: yPosition },
           data: {
             label: specialist.specialty,
-            type: 'specialist',
+            type: 'sub',
             agentId: specialist.agentId,
             specialty: specialist.specialty,
             status: 'idle',

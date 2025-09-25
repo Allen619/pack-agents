@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // Agent 管理 API
 import { NextRequest, NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
@@ -80,22 +82,37 @@ export async function POST(
     const agentData = await request.json();
 
     // 创建Agent配置
+    const now = new Date().toISOString();
+    const metadataInput = agentData.metadata ?? {};
+    const llmConfigInput = agentData.llmConfig ?? {};
+
     const agent: AgentConfig = {
       id: nanoid(),
       name: agentData.name,
       description: agentData.description || '',
       role: agentData.role,
       systemPrompt: agentData.systemPrompt,
-      llmConfig: agentData.llmConfig,
+      llmConfig: {
+        provider: llmConfigInput.provider || 'others',
+        model: llmConfigInput.model,
+        baseUrl: (llmConfigInput.baseUrl || '').trim(),
+        apiKey: (llmConfigInput.apiKey || '').trim(),
+        capabilities: llmConfigInput.capabilities || {
+          language: true,
+          vision: false,
+          web: false,
+        },
+        parameters: llmConfigInput.parameters || {},
+      },
       knowledgeBasePaths: agentData.knowledgeBasePaths || [],
       enabledTools: agentData.enabledTools || [],
       metadata: {
-        version: '1.0.0',
-        author: agentData.author || 'user',
-        tags: agentData.tags || [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        usage: {
+        version: metadataInput.version || '1.0.0',
+        author: metadataInput.author || 'user',
+        tags: metadataInput.tags || [],
+        createdAt: metadataInput.createdAt || now,
+        updatedAt: now,
+        usage: metadataInput.usage || {
           totalExecutions: 0,
           successRate: 0,
           avgExecutionTime: 0,

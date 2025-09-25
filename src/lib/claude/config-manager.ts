@@ -22,9 +22,26 @@ export class ClaudeCodeConfigManager {
     };
   }
 
+  private resolveApiKey(source?: {
+    apiKey?: string;
+    apiKeyRef?: string;
+  }): string {
+    if (source?.apiKey && source.apiKey.trim().length > 0) {
+      return source.apiKey;
+    }
+
+    if (source?.apiKeyRef) {
+      const envKey = process.env[source.apiKeyRef];
+      if (envKey && envKey.trim().length > 0) {
+        return envKey;
+      }
+    }
+
+    return this.defaultConfig.apiKey;
+  }
   async getClaudeConfig(agentId?: string): Promise<ClaudeCodeConfig> {
     try {
-      // 如果指定了 agentId，尝试加载 Agent 特定的配置
+      // 如果提供了 agentId，则加载 agent 配置
       if (agentId) {
         const agentConfigPath = path.join(
           this.configRoot,
@@ -39,7 +56,7 @@ export class ClaudeCodeConfigManager {
           if (agentConfig.llmConfig?.provider === 'claude') {
             return {
               ...this.defaultConfig,
-              apiKey: agentConfig.llmConfig.apiKey || this.defaultConfig.apiKey,
+              apiKey: this.resolveApiKey(agentConfig.llmConfig),
               model: agentConfig.llmConfig.model || this.defaultConfig.model,
               maxTokens:
                 agentConfig.llmConfig.parameters?.maxTokens ||
@@ -67,9 +84,11 @@ export class ClaudeCodeConfigManager {
         const config = JSON.parse(content);
 
         if (config.providers?.claude) {
+          const claudeConfig = config.providers.claude;
           return {
             ...this.defaultConfig,
-            ...config.providers.claude,
+            ...claudeConfig,
+            apiKey: this.resolveApiKey(claudeConfig),
           };
         }
       } catch (error) {

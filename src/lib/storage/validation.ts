@@ -20,11 +20,21 @@ export class ConfigValidator {
         systemPrompt: { type: 'string', minLength: 10 },
         llmConfig: {
           type: 'object',
-          required: ['provider', 'model'],
+          required: ['provider', 'baseUrl', 'apiKey', 'capabilities'],
           properties: {
             provider: { type: 'string' },
             model: { type: 'string' },
-            apiKey: { type: 'string' },
+            baseUrl: { type: 'string', minLength: 1 },
+            apiKey: { type: 'string', minLength: 1 },
+            capabilities: {
+              type: 'object',
+              required: ['language', 'vision', 'web'],
+              properties: {
+                language: { type: 'boolean' },
+                vision: { type: 'boolean' },
+                web: { type: 'boolean' },
+              },
+            },
             parameters: { type: 'object' },
           },
         },

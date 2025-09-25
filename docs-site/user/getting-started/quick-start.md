@@ -11,7 +11,7 @@ description: 30 秒快速体验 Pack Agents，创建您的第一个 AI Agent
 
 ### 第一步：访问系统
 
-1. 打开浏览器，访问：`http://localhost:3001`
+1. 打开浏览器，访问：`http://localhost:3000`
 2. 等待系统加载完成
 
 ### 第二步：创建 Agent
