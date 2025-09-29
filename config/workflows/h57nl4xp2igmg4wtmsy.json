@@ -1,0 +1,90 @@
+{
+  "id": "h57nl4xp2igmg4wtmsy",
+  "name": "代码审查工作流 - 副本",
+  "description": "多 Agent 协作进行代码审查，包括代码分析、安全检查和质量评估",
+  "agentIds": [
+    "placeholder-code_analyzer",
+    "placeholder-security_auditor",
+    "placeholder-quality_reviewer",
+    "placeholder-report_synthesizer"
+  ],
+  "mainAgentId": "placeholder-code_analyzer",
+  "executionFlow": {
+    "stages": [
+      {
+        "id": "parallel_analysis",
+        "name": "并行分析阶段",
+        "type": "parallel",
+        "tasks": [
+          {
+            "id": "qyp5v0f07cmg4wtmsy",
+            "agentId": "placeholder-code_analyzer",
+            "taskType": "sub_execution",
+            "inputs": {},
+            "dependencies": [],
+            "timeout": 300000
+          },
+          {
+            "id": "rep2op1c87mg4wtmsy",
+            "agentId": "placeholder-security_auditor",
+            "taskType": "sub_execution",
+            "inputs": {},
+            "dependencies": [],
+            "timeout": 300000
+          },
+          {
+            "id": "xmwlq9imi3mg4wtmsy",
+            "agentId": "placeholder-quality_reviewer",
+            "taskType": "sub_execution",
+            "inputs": {},
+            "dependencies": [],
+            "timeout": 300000
+          }
+        ],
+        "timeoutMs": 300000,
+        "retryPolicy": {
+          "maxRetries": 2,
+          "backoffMs": 5000
+        }
+      },
+      {
+        "id": "report_synthesis",
+        "name": "报告综合阶段",
+        "type": "sequential",
+        "tasks": [
+          {
+            "id": "md3jkp6v1wgmg4wtmsy",
+            "agentId": "placeholder-report_synthesizer",
+            "taskType": "synthesis",
+            "inputs": {},
+            "dependencies": [],
+            "timeout": 180000
+          }
+        ],
+        "timeoutMs": 180000,
+        "retryPolicy": {
+          "maxRetries": 1,
+          "backoffMs": 3000
+        }
+      }
+    ],
+    "dependencies": [
+      {
+        "fromStage": "parallel_analysis",
+        "toStage": "report_synthesis",
+        "condition": "success"
+      }
+    ]
+  },
+  "configuration": {
+    "maxExecutionTime": 600000,
+    "autoRetry": true,
+    "notifications": true
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "createdAt": "2025-09-29T09:12:02.482Z",
+    "updatedAt": "2025-09-29T09:12:02.608Z",
+    "executionCount": 0
+  }
+}

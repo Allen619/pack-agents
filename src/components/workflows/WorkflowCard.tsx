@@ -3,6 +3,7 @@ import { EditOutlined, DeleteOutlined, PlayCircleOutlined, TeamOutlined, UserOut
 import { WorkflowConfig } from '@/lib/types';
 import { formatDistanceToNow } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { memo } from 'react';
 
 const { Text, Paragraph } = Typography;
 
@@ -65,7 +66,7 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
   return (
     <Card
       hoverable
-      className="workflow-card h-full"
+      className="h-full workflow-card"
       actions={[
         <Tooltip key="edit" title="编辑工作流">
           <Button
@@ -155,21 +156,21 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
           {/* 配置标签 */}
           <div className="flex flex-wrap gap-1">
             {workflow.configuration.autoRetry && (
-              <Tag size="small" color="blue">自动重试</Tag>
+              <Tag color="blue">自动重试</Tag>
             )}
             {workflow.configuration.notifications && (
-              <Tag size="small" color="green">通知提醒</Tag>
+              <Tag color="green">通知提醒</Tag>
             )}
             {workflow.configuration.maxExecutionTime && (
-              <Tag size="small" color="orange">
+              <Tag color="orange">
                 超时 {Math.floor(workflow.configuration.maxExecutionTime / 1000)}s
               </Tag>
             )}
           </div>
         </Space>
 
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <Space className="w-full justify-between">
+        <div className="pt-3 mt-3 border-t border-gray-100">
+          <Space className="justify-between w-full">
             <Text type="secondary" className="text-xs">
               创建于 {formatDistanceToNow(workflow.metadata.createdAt)}前
             </Text>
@@ -182,3 +183,16 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
     </Card>
   );
 }
+
+export const WorkflowCardMemo = memo(WorkflowCard, (prevProps, nextProps) => {
+  return (
+    prevProps.workflow.id === nextProps.workflow.id &&
+    prevProps.workflow.name === nextProps.workflow.name &&
+    prevProps.workflow.description === nextProps.workflow.description &&
+    prevProps.workflow.metadata.updatedAt === nextProps.workflow.metadata.updatedAt &&
+    prevProps.workflow.metadata.lastExecuted === nextProps.workflow.metadata.lastExecuted &&
+    prevProps.workflow.agentIds.length === nextProps.workflow.agentIds.length &&
+    prevProps.workflow.executionFlow.stages.length === nextProps.workflow.executionFlow.stages.length &&
+    prevProps.workflow.metadata.executionCount === nextProps.workflow.metadata.executionCount
+  );
+});

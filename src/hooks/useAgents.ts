@@ -1,11 +1,13 @@
 // Agent 管理 Hook
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { message } from 'antd';
 import { AgentConfig, AgentTemplate, ApiResponse } from '@/types';
 
 export interface UseAgentsReturn {
   agents: AgentConfig[];
   templates: AgentTemplate[];
-  loading: boolean;
+  agentsLoading: boolean;
+  templatesLoading: boolean;
   error: string | null;
   createAgent: (agentData: Partial<AgentConfig>) => Promise<AgentConfig | null>;
   updateAgent: (id: string, updates: Partial<AgentConfig>) => Promise<AgentConfig | null>;
@@ -16,174 +18,183 @@ export interface UseAgentsReturn {
 }
 
 export function useAgents(): UseAgentsReturn {
-  const [agents, setAgents] = useState<AgentConfig[]>([]);
-  const [templates, setTemplates] = useState<AgentTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const refreshAgents = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch('/api/agents', { cache: 'no-store' });
+  // 获取 Agent 列表
+  const {
+    data: agents = [],
+    isLoading: agentsLoading,
+    error: agentsError,
+    refetch: refreshAgents
+  } = useQuery({
+    queryKey: ['agents'],
+    queryFn: async () => {
+      const response = await fetch('/api/agents');
+      if (!response.ok) {
+        throw new Error('Failed to fetch agents');
+      }
       const result: ApiResponse<AgentConfig[]> = await response.json();
 
-      if (result.success) {
-        setAgents(result.data || []);
-      } else {
-        setError(result.error?.message || '获取 Agent 列表失败');
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to fetch agents');
       }
-    } catch (err) {
-      setError('网络请求失败');
-      console.error('Fetch agents error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
-  const refreshTemplates = useCallback(async () => {
-    try {
-      const response = await fetch('/api/agents/templates', { cache: 'no-store' });
+      return result.data || [];
+    }
+  });
+
+  // 获取 Agent 模板列表
+  const {
+    data: templates = [],
+    isLoading: templatesLoading,
+    error: templatesError,
+    refetch: refreshTemplates
+  } = useQuery({
+    queryKey: ['agent-templates'],
+    queryFn: async () => {
+      const response = await fetch('/api/agents/templates');
+      if (!response.ok) {
+        throw new Error('Failed to fetch agent templates');
+      }
       const result: ApiResponse<AgentTemplate[]> = await response.json();
 
-      if (result.success) {
-        setTemplates(result.data || []);
-      } else {
-        console.error('获取模板失败:', result.error?.message);
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to fetch agent templates');
       }
-    } catch (err) {
-      console.error('Fetch templates error:', err);
+
+      return result.data || [];
     }
-  }, []);
+  });
 
-  const createAgent = useCallback(
-    async (agentData: Partial<AgentConfig>): Promise<AgentConfig | null> => {
-      try {
-        setError(null);
+  // 创建 Agent
+  const createAgentMutation = useMutation({
+    mutationFn: async (agentData: Partial<AgentConfig>): Promise<AgentConfig> => {
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(agentData),
+      });
 
-        const response = await fetch('/api/agents', {
-          cache: 'no-store',
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(agentData),
-        });
-
-        const result: ApiResponse<AgentConfig> = await response.json();
-
-        if (result.success && result.data) {
-          await refreshAgents();
-          return result.data;
-        } else {
-          setError(result.error?.message || '创建 Agent 失败');
-          return null;
-        }
-      } catch (err) {
-        setError('网络请求失败');
-        console.error('Create agent error:', err);
-        return null;
+      if (!response.ok) {
+        throw new Error('Failed to create agent');
       }
-    },
-    [refreshAgents]
-  );
 
-  const updateAgent = useCallback(
-    async (id: string, updates: Partial<AgentConfig>): Promise<AgentConfig | null> => {
-      try {
-        setError(null);
+      const result: ApiResponse<AgentConfig> = await response.json();
 
-        const response = await fetch(`/api/agents/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
-        });
-
-        const result: ApiResponse<AgentConfig> = await response.json();
-
-        if (result.success && result.data) {
-          setAgents((prev) => prev.map((agent) => (agent.id === id ? result.data! : agent)));
-          return result.data;
-        } else {
-          setError(result.error?.message || '更新 Agent 失败');
-          return null;
-        }
-      } catch (err) {
-        setError('网络请求失败');
-        console.error('Update agent error:', err);
-        return null;
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to create agent');
       }
+
+      return result.data!;
     },
-    []
-  );
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      message.success(`Agent "${data.name}" 创建成功！`);
+    },
+    onError: (error: Error) => {
+      message.error(`创建 Agent 失败：${error.message}`);
+    }
+  });
 
-  const deleteAgent = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      setError(null);
+  // 更新 Agent
+  const updateAgentMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<AgentConfig> }): Promise<AgentConfig> => {
+      const response = await fetch(`/api/agents/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
 
+      if (!response.ok) {
+        throw new Error('Failed to update agent');
+      }
+
+      const result: ApiResponse<AgentConfig> = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to update agent');
+      }
+
+      return result.data!;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      queryClient.setQueryData(['agent', data.id], data);
+      message.success(`Agent "${data.name}" 更新成功！`);
+    },
+    onError: (error: Error) => {
+      message.error(`更新 Agent 失败：${error.message}`);
+    }
+  });
+
+  // 删除 Agent
+  const deleteAgentMutation = useMutation({
+    mutationFn: async (id: string): Promise<void> => {
       const response = await fetch(`/api/agents/${id}`, {
         method: 'DELETE',
       });
 
+      if (!response.ok) {
+        throw new Error('Failed to delete agent');
+      }
+
       const result: ApiResponse = await response.json();
 
-      if (result.success) {
-        setAgents((prev) => prev.filter((agent) => agent.id !== id));
-        return true;
-      } else {
-        setError(result.error?.message || '删除 Agent 失败');
-        return false;
-      }
-    } catch (err) {
-      setError('网络请求失败');
-      console.error('Delete agent error:', err);
-      return false;
-    }
-  }, []);
-
-  const createFromTemplate = useCallback(
-    async (templateId: string, overrides?: Partial<AgentConfig>): Promise<AgentConfig | null> => {
-      try {
-        setError(null);
-
-        const response = await fetch('/api/agents/templates', {
-          cache: 'no-store',
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ templateId, overrides }),
-        });
-
-        const result: ApiResponse<AgentConfig> = await response.json();
-
-        if (result.success && result.data) {
-          await refreshAgents();
-          return result.data;
-        } else {
-          setError(result.error?.message || '从模板创建 Agent 失败');
-          return null;
-        }
-      } catch (err) {
-        setError('网络请求失败');
-        console.error('Create from template error:', err);
-        return null;
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to delete agent');
       }
     },
-    [refreshAgents]
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      message.success('Agent 删除成功！');
+    },
+    onError: (error: Error) => {
+      message.error(`删除 Agent 失败：${error.message}`);
+    }
+  });
 
-  useEffect(() => {
-    refreshAgents();
-    refreshTemplates();
-  }, [refreshAgents, refreshTemplates]);
+  // 从模板创建 Agent
+  const createFromTemplateMutation = useMutation({
+    mutationFn: async ({ templateId, overrides }: { templateId: string; overrides?: Partial<AgentConfig> }): Promise<AgentConfig> => {
+      const response = await fetch('/api/agents/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId, overrides }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create agent from template');
+      }
+
+      const result: ApiResponse<AgentConfig> = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to create agent from template');
+      }
+
+      return result.data!;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      message.success(`从模板创建 Agent "${data.name}" 成功！`);
+    },
+    onError: (error: Error) => {
+      message.error(`从模板创建 Agent 失败：${error.message}`);
+    }
+  });
+
+  const error = agentsError?.message || templatesError?.message || null;
 
   return {
     agents,
     templates,
-    loading,
+    agentsLoading,
+    templatesLoading,
     error,
-    createAgent,
-    updateAgent,
-    deleteAgent,
-    createFromTemplate,
+    createAgent: (agentData) => createAgentMutation.mutateAsync(agentData),
+    updateAgent: (id, updates) => updateAgentMutation.mutateAsync({ id, updates }),
+    deleteAgent: (id) => deleteAgentMutation.mutateAsync(id).then(() => true).catch(() => false),
+    createFromTemplate: (templateId, overrides) => createFromTemplateMutation.mutateAsync({ templateId, overrides }),
     refreshAgents,
     refreshTemplates,
   };

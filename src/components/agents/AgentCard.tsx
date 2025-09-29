@@ -1,15 +1,16 @@
 // Agent 卡片组件
 import { Card, Tag, Button, Space, Typography, Popconfirm, message } from 'antd';
-import { 
-  EditOutlined, 
-  DeleteOutlined, 
-  MessageOutlined, 
+import {
+  EditOutlined,
+  DeleteOutlined,
+  MessageOutlined,
   RobotOutlined,
   UserOutlined,
   ClockCircleOutlined
 } from '@ant-design/icons';
 import { AgentConfig } from '@/types';
 import { formatDate, getAgentRoleColor } from '@/utils';
+import { memo, useMemo } from 'react';
 
 const { Text, Paragraph } = Typography;
 
@@ -236,3 +237,17 @@ export function AgentCard({
     </Card>
   );
 }
+
+export const AgentCardMemo = memo(AgentCard, (prevProps, nextProps) => {
+  return (
+    prevProps.agent.id === nextProps.agent.id &&
+    prevProps.agent.name === nextProps.agent.name &&
+    prevProps.agent.description === nextProps.agent.description &&
+    prevProps.agent.role === nextProps.agent.role &&
+    prevProps.agent.llmConfig.provider === nextProps.agent.llmConfig.provider &&
+    prevProps.agent.metadata.updatedAt === nextProps.agent.metadata.updatedAt &&
+    prevProps.agent.metadata.usage.totalExecutions === nextProps.agent.metadata.usage.totalExecutions &&
+    prevProps.agent.metadata.usage.successRate === nextProps.agent.metadata.usage.successRate &&
+    prevProps.loading === nextProps.loading
+  );
+});

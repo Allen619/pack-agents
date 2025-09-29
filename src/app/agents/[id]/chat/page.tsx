@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -47,6 +47,10 @@ export default function AgentChatPage({ params }: AgentChatPageProps) {
     fetchAgent();
   }, [params.id, router]);
 
+  const handleOpenSettings = () => {
+    router.push(`/agents/${params.id}/edit`);
+  };
+
   const handleBack = () => {
     router.push('/agents');
   };
@@ -82,9 +86,10 @@ export default function AgentChatPage({ params }: AgentChatPageProps) {
   return (
     <AppLayout>
       <div className="h-full p-6">
-        <AgentChatInterface 
-          agent={agent} 
+        <AgentChatInterface
+          agent={agent}
           onBack={handleBack}
+          onOpenSettings={handleOpenSettings}
         />
       </div>
     </AppLayout>

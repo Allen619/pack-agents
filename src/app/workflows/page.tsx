@@ -20,7 +20,7 @@ import {
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import { useWorkflows } from '@/hooks/useWorkflows';
-import { WorkflowCard } from '@/components/workflows/WorkflowCard';
+import { WorkflowCardMemo } from '@/components/workflows/WorkflowCard';
 import { PageHeader, LoadingState, ErrorBoundary } from '@/components';
 import { WorkflowConfig } from '@/lib/types';
 
@@ -29,12 +29,12 @@ const { Option } = Select;
 
 export default function WorkflowsPage() {
   const router = useRouter();
-  const { 
-    workflows, 
-    isLoading, 
-    error, 
-    deleteWorkflow, 
-    isDeleting 
+  const {
+    workflows,
+    isLoading,
+    error,
+    deleteWorkflow,
+    isDeleting
   } = useWorkflows();
   
   const [searchValue, setSearchValue] = useState('');
@@ -94,14 +94,15 @@ export default function WorkflowsPage() {
   };
 
   if (error) {
+    console.log('error:', error);
     return (
       <div className="p-6">
         <PageHeader 
           title="工作流管理" 
           description="无法加载工作流列表"
         />
-        <div className="text-center py-8">
-          <p className="text-red-500 mb-4">加载工作流时出现错误</p>
+        <div className="py-8 text-center">
+          <p className="mb-4 text-red-500">加载工作流时出现错误</p>
           <Button onClick={() => window.location.reload()}>
             重新加载
           </Button>
@@ -113,7 +114,7 @@ export default function WorkflowsPage() {
   return (
     <AppLayout>
       <ErrorBoundary>
-        <div className="workflow-list-page p-6">
+        <div className="p-6 workflow-list-page">
         <PageHeader
           title="工作流管理"
           description="创建和管理多 Agent 协作工作流"
@@ -130,7 +131,7 @@ export default function WorkflowsPage() {
         />
 
         {/* Filters */}
-        <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+        <div className="p-6 mb-6 bg-white rounded-lg shadow-sm">
           <Space size="large" wrap>
             <div>
               <Input
@@ -161,15 +162,17 @@ export default function WorkflowsPage() {
         {/* Content */}
         <div className="bg-white rounded-lg shadow-sm">
           {isLoading ? (
-            <LoadingState message="加载工作流中..." />
+            <LoadingState loading tip="加载工作流中...">
+              <></>
+            </LoadingState>
           ) : filteredWorkflows.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="py-12 text-center">
               {workflows.length === 0 ? (
                 <div>
                   <Title level={4} type="secondary">
                     还没有创建任何工作流
                   </Title>
-                  <p className="text-gray-500 mb-6">
+                  <p className="mb-6 text-gray-500">
                     创建您的第一个工作流，开始多 Agent 协作之旅
                   </p>
                   <Button 
@@ -203,7 +206,7 @@ export default function WorkflowsPage() {
                     lg={8} 
                     xl={6}
                   >
-                    <WorkflowCard
+                    <WorkflowCardMemo
                       workflow={workflow}
                       onEdit={handleEditWorkflow}
                       onDelete={handleDeleteWorkflow}
@@ -235,7 +238,7 @@ export default function WorkflowsPage() {
           {workflowToDelete && (
             <div>
               <p>确定要删除工作流 <strong>"{workflowToDelete.name}"</strong> 吗？</p>
-              <p className="text-gray-500 text-sm mt-2">
+              <p className="mt-2 text-sm text-gray-500">
                 此操作不可撤销，工作流的所有配置和历史记录都将被永久删除。
               </p>
             </div>

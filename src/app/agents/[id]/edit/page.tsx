@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, message, Spin } from 'antd';
 import AppLayout from '@/components/layout/AppLayout';
@@ -21,53 +21,78 @@ export default function EditAgentPage({ params }: EditAgentPageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchAgent = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchAgent = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const response = await fetch(`/api/agents/${params.id}`);
-        const result: ApiResponse<AgentConfig> = await response.json();
+      const response = await fetch(`/api/agents/${params.id}`, {
+        headers: {
+          'Cache-Control': 'no-cache', // 绕过浏览器缓存获取最新数据
+        },
+      });
 
-        if (result.success && result.data) {
-          setAgent(result.data);
-        } else {
-          setError(result.error?.message || 'Agent 不存在');
-        }
-      } catch (err) {
-        setError('网络请求失败');
-        console.error('Fetch agent error:', err);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-    };
 
-    fetchAgent();
+      const result: ApiResponse<AgentConfig> = await response.json();
+
+      if (result.success && result.data) {
+        setAgent(result.data);
+      } else {
+        setError(result.error?.message || 'Agent 不存在');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '网络请求失败';
+      setError(errorMessage);
+      console.error('Fetch agent error:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [params.id]);
+
+  useEffect(() => {
+    fetchAgent();
+  }, [fetchAgent]);
 
   const handleSubmit = async (values: Partial<AgentConfig>) => {
     if (!agent) return;
 
     try {
       setSubmitting(true);
-      
+
       const response = await fetch(`/api/agents/${params.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
         body: JSON.stringify(values),
       });
-      
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const result: ApiResponse<AgentConfig> = await response.json();
-      
+
       if (result.success) {
         message.success('Agent 更新成功');
-        router.push('/agents');
+
+        // 立即更新本地状态，避免额外的网络请求
+        setAgent(prev => prev ? { ...prev, ...values } : null);
+
+        // 延迟导航，让用户看到成功消息
+        setTimeout(() => {
+          router.push('/agents');
+        }, 500);
       } else {
         message.error(result.error?.message || '更新失败');
       }
     } catch (error) {
-      message.error('网络请求失败');
+      const errorMessage = error instanceof Error ? error.message : '网络请求失败';
+      message.error(`更新失败: ${errorMessage}`);
       console.error('Update agent error:', error);
     } finally {
       setSubmitting(false);
@@ -82,9 +107,15 @@ export default function EditAgentPage({ params }: EditAgentPageProps) {
     return (
       <AppLayout>
         <div className="p-6">
-          <div className="flex items-center justify-center py-20">
-            <Spin size="large" tip="加载 Agent 信息..." />
-          </div>
+          <PageHeader
+            title="编辑 Agent"
+            description="正在加载 Agent 配置..."
+          />
+          <Card>
+            <div className="flex items-center justify-center py-20">
+              <Spin size="large" tip="加载 Agent 信息..." />
+            </div>
+          </Card>
         </div>
       </AppLayout>
     );
@@ -101,12 +132,21 @@ export default function EditAgentPage({ params }: EditAgentPageProps) {
           <Card>
             <div className="text-center py-8">
               <div className="text-red-500 mb-4">{error || 'Agent 不存在'}</div>
-              <button
-                onClick={() => router.back()}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                返回
-              </button>
+              <div className="space-x-4">
+                <button
+                  onClick={() => router.back()}
+                  className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                >
+                  返回
+                </button>
+                <button
+                  onClick={fetchAgent}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                >
+                  {loading ? '重试中...' : '重试'}
+                </button>
+              </div>
             </div>
           </Card>
         </div>

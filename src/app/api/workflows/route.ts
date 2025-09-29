@@ -5,7 +5,7 @@ import { ApiResponse, WorkflowConfig } from '@/lib/types';
 import { generateId, getPagination } from '@/lib/utils';
 import { logger } from '@/lib/logging/logger';
 
-const configManager = new ConfigManager();
+const configManager = new ConfigManager(process.cwd() + '/config');
 const validator = new ConfigValidator();
 
 export async function GET(request: NextRequest) {

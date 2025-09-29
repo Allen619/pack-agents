@@ -1,214 +1,608 @@
-// Agent 对话界面组件 - 使用 Ant Design X
-import { useState, useEffect } from 'react';
-import { 
-  Card, 
-  Button, 
-  Typography, 
-  Space, 
-  Tag, 
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  Card,
+  Button,
+  Space,
+  Tag,
   Alert,
-  message,
+  message as antdMessage,
 } from 'antd';
-import { 
+import {
   MessageOutlined,
   RobotOutlined,
   SendOutlined,
   ClearOutlined,
   SettingOutlined,
+  StopOutlined,
+  LoadingOutlined,
+  CopyOutlined,
+  DeleteOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
+import {
+  Bubble,
+  Sender,
+  Welcome,
+} from '@ant-design/x';
+import markdownit from 'markdown-it';
 import { AgentConfig } from '@/types';
 import { getAgentRoleColor } from '@/utils';
 
-const { Text, Title } = Typography;
+const DEFAULT_MAX_TURNS = 6;
 
-interface Message {
+// 复制到剪贴板函数
+const copyToClipboard = async (text: string, messageId: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    antdMessage.success('已复制到剪贴板');
+  } catch (err) {
+    console.error('复制失败:', err);
+    antdMessage.error('复制失败，请手动选择复制');
+  }
+};
+
+
+// 初始化 markdown-it
+const md = markdownit({ html: true, breaks: true });
+
+// Markdown 渲染组件
+const renderMarkdown = (content: string, onCopy?: (text: string) => void) => {
+  if (!content || content === '...') {
+    return <div className="text-gray-400">...</div>;
+  }
+
+  const renderWithCopyButtons = (html: string) => {
+    // 为代码块添加复制按钮
+    return html.replace(
+      /<pre[^>]*><code[^>]*class="([^"]*)"[^>]*>([\s\S]*?)<\/code><\/pre>/g,
+      (match, codeClass, codeContent) => {
+        const buttonId = `copy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const cleanContent = codeContent.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+        return `
+          <div class="relative">
+            <pre class="overflow-x-auto p-4 bg-gray-800 rounded-lg text-gray-100 text-base">
+              <code class="${codeClass}">${codeContent}</code>
+            </pre>
+            <button
+              onclick="
+                const event = new CustomEvent('copy-code', {
+                  detail: { code: \`${cleanContent}\` },
+                  bubbles: true
+                });
+                this.dispatchEvent(event);
+              "
+              class="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded-md transition-colors duration-200"
+              title="复制代码"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8z"/>
+              </svg>
+            </button>
+          </div>
+        `;
+      }
+    );
+  };
+
+  return (
+    <div
+      className="max-w-none prose prose-sm"
+      onCopy={(e) => {
+        if (onCopy) {
+          onCopy(window.getSelection()?.toString() || '');
+        }
+      }}
+    >
+      <div
+        dangerouslySetInnerHTML={{
+          __html: renderWithCopyButtons(
+            md.render(content)
+              .replace(/<blockquote>/g, '<blockquote class="pl-4 my-2 italic border-l-4 border-gray-300 bg-gray-50 py-2 pr-4 rounded">')
+          )
+        }}
+      />
+    </div>
+  );
+};
+
+interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
   streaming?: boolean;
+  error?: string;
 }
 
 interface AgentChatInterfaceProps {
   agent: AgentConfig;
   onBack?: () => void;
+  onOpenSettings?: (agent: AgentConfig) => void;
 }
 
-export function AgentChatInterface({ agent, onBack }: AgentChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+const buildWelcomeMessage = (agent: AgentConfig): ChatMessage => ({
+  id: `welcome-${agent.id}`,
+  role: 'assistant',
+  content: `你好，我是 ${agent.name}。${
+    agent.description || '我可以帮助你完成工作。'
+  }`,
+  timestamp: new Date(),
+});
+
+const getRoleText = (role: string) => {
+  switch (role) {
+    case 'main':
+      return 'Coordinator';
+    case 'sub':
+      return 'Specialist';
+    case 'synthesis':
+      return 'Synthesizer';
+    default:
+      return role;
+  }
+};
+
+const getProviderText = (provider: string) => {
+  switch (provider) {
+    case 'claude':
+      return 'Claude';
+    case 'openai':
+      return 'OpenAI';
+    default:
+      return provider;
+  }
+};
+
+export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatInterfaceProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    buildWelcomeMessage(agent),
+  ]);
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
+  const [shouldClearContext, setShouldClearContext] = useState(false);
+  const activeRequest = useRef<AbortController | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // 处理代码块复制事件
+  useEffect(() => {
+    const handleCodeCopy = (event: CustomEvent) => {
+      const { code } = event.detail;
+      copyToClipboard(code, 'code-block');
+    };
+
+    document.addEventListener('copy-code', handleCodeCopy as EventListener);
+
+    return () => {
+      document.removeEventListener('copy-code', handleCodeCopy as EventListener);
+    };
+  }, []);
+
+  const hasStreamingMessage = messages.some((msg) => msg.streaming);
 
   useEffect(() => {
-    // 添加欢迎消息
-    const welcomeMessage: Message = {
-      id: 'welcome',
-      role: 'assistant',
-      content: `你好！我是 ${agent.name}。${agent.description || '我可以帮助你完成各种任务。'}`,
-      timestamp: new Date(),
-    };
-    setMessages([welcomeMessage]);
+    setMessages([buildWelcomeMessage(agent)]);
+    setInputValue('');
+    setIsThinking(false);
+    if (activeRequest.current) {
+      activeRequest.current.abort();
+      activeRequest.current = null;
+    }
   }, [agent]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+  useEffect(() => {
+    if (!scrollContainerRef.current) return;
+    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+  }, [messages]);
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
+  useEffect(() => () => {
+    if (activeRequest.current) {
+      activeRequest.current.abort();
+    }
+  }, []);
+
+  const upsertAssistantMessage = useCallback(
+    (id: string, updater: (current: ChatMessage) => ChatMessage) => {
+      setMessages((prev) => {
+        const index = prev.findIndex((msg) => msg.id === id);
+        if (index === -1) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[index] = updater(prev[index]);
+        return updated;
+      });
+    },
+    []
+  );
+
+  const handleOpenSettings = useCallback(() => {
+    if (onOpenSettings) {
+      onOpenSettings(agent);
+    } else {
+      antdMessage.info('设置功能暂未配置');
+    }
+  }, [agent, onOpenSettings]);
+
+  const handleClearChat = useCallback(() => {
+    if (activeRequest.current) {
+      activeRequest.current.abort();
+      activeRequest.current = null;
+    }
+    setMessages([buildWelcomeMessage(agent)]);
+    setInputValue('');
+    setIsThinking(false);
+    antdMessage.success('聊天记录已清空');
+  }, [agent]);
+
+  const handleStop = useCallback(() => {
+    if (activeRequest.current) {
+      activeRequest.current.abort();
+      antdMessage.info('已停止当前响应');
+    }
+  }, []);
+
+  // 清除上下文函数
+  const clearContext = useCallback(() => {
+    setMessages([buildWelcomeMessage(agent)]);
+    setInputValue('');
+    setIsThinking(false);
+    if (activeRequest.current) {
+      activeRequest.current.abort();
+      activeRequest.current = null;
+    }
+    setShouldClearContext(prev => !prev); // 切换状态
+    antdMessage.success('上下文已清除，下一次对话将重新开始');
+  }, [agent]);
+
+  const handleSendMessage = useCallback(async () => {
+    const content = inputValue.trim();
+    if (!content) return;
+
+    if (isThinking) {
+      antdMessage.warning('Claude is already responding. Please wait.');
+      return;
+    }
+
+    const timestamp = new Date();
+    const userMessage: ChatMessage = {
+      id: `user-${timestamp.getTime()}`,
       role: 'user',
-      content: inputValue,
-      timestamp: new Date(),
+      content,
+      timestamp,
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const assistantId = `assistant-${timestamp.getTime()}`;
+    const assistantMessage: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      streaming: true,
+    };
+
+    const payload = {
+      messages: [...messages, userMessage].map(({ role, content: rawContent }) => ({
+        role,
+        content: rawContent,
+      })),
+      options: {
+        maxTurns: DEFAULT_MAX_TURNS,
+        continue: !shouldClearContext, // 根据状态决定是否继续上下文
+      },
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setInputValue('');
     setIsThinking(true);
 
-    // 模拟 AI 响应（这里应该调用实际的 Claude Code SDK）
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `我收到了你的消息："${userMessage.content}"。这是一个模拟回复，实际情况下会调用 Claude Code SDK 来处理你的请求。`,
-        timestamp: new Date(),
+    // 发送消息后恢复continue状态，确保下次默认继续上下文
+    if (shouldClearContext) {
+      setShouldClearContext(false);
+    }
+
+    const controller = new AbortController();
+    activeRequest.current = controller;
+
+    try {
+      const response = await fetch(`/api/agents/${agent.id}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        let errorMessage = '聊天请求失败';
+        try {
+          const errorBody = await response.json();
+          errorMessage = errorBody?.error?.message || errorMessage;
+        } catch (err) {
+          console.warn('解析聊天错误响应失败', err);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      const appendDelta = (delta: string) => {
+        // 过滤掉 (no content)
+        if (delta === '(no content)') {
+          return;
+        }
+
+        upsertAssistantMessage(assistantId, (current) => {
+          // 处理开头的 \n\n
+          let processedDelta = delta;
+          if (current.content === '' && delta.startsWith('\n\n')) {
+            processedDelta = delta.substring(2);
+          }
+
+          return {
+            ...current,
+            content: current.content + processedDelta,
+          };
+        });
       };
-      
-      setMessages(prev => [...prev, assistantMessage]);
+
+      const finalizeAssistant = (finalText?: string) => {
+        upsertAssistantMessage(assistantId, (current) => {
+          let content = current.content;
+
+          if (typeof finalText === 'string' && finalText.length > 0) {
+            content = finalText;
+          }
+
+          // 过滤掉 (no content)
+          content = content.replace(/\(no content\)/g, '');
+
+          // 处理开头的 \n\n
+          if (content.startsWith('\n\n')) {
+            content = content.substring(2);
+          }
+
+          return {
+            ...current,
+            content,
+            streaming: false,
+            timestamp: new Date(),
+          };
+        });
+      };
+
+      const markError = (errorMessage: string) => {
+        upsertAssistantMessage(assistantId, (current) => ({
+          ...current,
+          content: errorMessage,
+          streaming: false,
+          error: errorMessage,
+          timestamp: new Date(),
+        }));
+        antdMessage.error(errorMessage);
+      };
+
+      const handleLine = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        let event: any;
+        try {
+          event = JSON.parse(trimmed);
+        } catch (err) {
+          console.warn('无法解析 Claude 响应块:', trimmed);
+          return;
+        }
+
+        switch (event.type) {
+          case 'delta':
+            if (typeof event.text === 'string') {
+              appendDelta(event.text);
+            }
+            break;
+          case 'done':
+            finalizeAssistant(typeof event.text === 'string' ? event.text : undefined);
+            break;
+          case 'error':
+            markError(
+              typeof event.message === 'string' ? event.message : 'Claude 响应失败'
+            );
+            break;
+          default:
+            if (typeof event.text === 'string') {
+              appendDelta(event.text);
+            }
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const segments = buffer.split('\n');
+        buffer = segments.pop() ?? '';
+        segments.forEach(handleLine);
+      }
+
+      if (buffer.trim()) {
+        handleLine(buffer);
+      }
+
+      finalizeAssistant();
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        upsertAssistantMessage(assistantId, (current) => ({
+          ...current,
+          content: current.content || '响应已取消。',
+          streaming: false,
+          timestamp: new Date(),
+        }));
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Claude 聊天失败';
+        upsertAssistantMessage(assistantId, (current) => ({
+          ...current,
+          content: errorMessage,
+          streaming: false,
+          error: errorMessage,
+          timestamp: new Date(),
+        }));
+        antdMessage.error(errorMessage);
+      }
+    } finally {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+      }
       setIsThinking(false);
-    }, 1500);
-  };
-
-  const handleClearChat = () => {
-    setMessages([]);
-    message.success('对话历史已清空');
-  };
-
-  const getRoleText = (role: string) => {
-    switch (role) {
-      case 'main':
-        return '主管理';
-      case 'sub':
-        return '子执行';
-      case 'synthesis':
-        return '总结';
-      default:
-        return role;
     }
-  };
-
-  const getProviderText = (provider: string) => {
-    switch (provider) {
-      case 'claude':
-        return 'Claude';
-      case 'openai':
-        return 'OpenAI';
-      default:
-        return provider;
-    }
-  };
+  }, [agent.id, inputValue, isThinking, messages, upsertAssistantMessage]);
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Agent 信息头部 */}
-      <Card className="mb-4">
-        <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* 头部信息 */}
+      <div className="p-4 bg-white border-b">
+        <div className="flex justify-between items-center mb-2">
           <div className="flex items-center space-x-3">
-            <RobotOutlined className="text-blue-500 text-2xl" />
+            <div className="flex justify-center items-center w-10 h-10 bg-blue-500 rounded-full">
+              <RobotOutlined className="text-lg text-white" />
+            </div>
             <div>
-              <Title level={4} className="mb-1">
-                {agent.name}
-              </Title>
-              <div className="flex items-center space-x-2">
-                <Tag className={getAgentRoleColor(agent.role)}>
+              <div className="text-lg font-semibold text-gray-900">{agent.name}</div>
+              <div className="flex items-center mt-1 space-x-2">
+                <span className={`px-2 py-1 text-xs rounded-full ${getAgentRoleColor(agent.role).replace('bg-', 'bg-').replace('-500', '-100').replace('text-', 'text-')}`}>
                   {getRoleText(agent.role)}
-                </Tag>
-                <Tag color="blue">
+                </span>
+                <span className="px-2 py-1 text-xs text-blue-700 bg-blue-100 rounded-full">
                   {getProviderText(agent.llmConfig.provider)}
-                </Tag>
-                <Tag color="green">
-                  {agent.llmConfig.model}
-                </Tag>
+                </span>
+                <span className="px-2 py-1 text-xs text-green-700 bg-green-100 rounded-full">
+                  {agent.metadata?.tags?.length ? agent.metadata.tags.join(', ') : 'No tags'}
+                </span>
               </div>
             </div>
           </div>
-          
-          <Space>
-            <Button 
-              icon={<ClearOutlined />} 
+
+          <div className="flex items-center space-x-2">
+            <Button
+              size="small"
+              icon={<ClearOutlined />}
               onClick={handleClearChat}
-              disabled={messages.length === 0}
+              disabled={messages.length <= 1 && !inputValue}
             >
-              清空对话
+              清空
             </Button>
-            <Button icon={<SettingOutlined />}>
+            <Button
+              size="small"
+              icon={<DeleteOutlined />}
+              onClick={clearContext}
+              disabled={messages.length <= 1}
+              title="清除上下文"
+            >
+              清除上下文
+            </Button>
+            <Button
+              size="small"
+              icon={<SettingOutlined />}
+              onClick={handleOpenSettings}
+            >
               设置
             </Button>
+            <Button
+              size="small"
+              icon={<StopOutlined />}
+              onClick={handleStop}
+              disabled={!isThinking}
+            >
+              停止
+            </Button>
             {onBack && (
-              <Button onClick={onBack}>
+              <Button size="small" onClick={onBack}>
                 返回
               </Button>
             )}
-          </Space>
+          </div>
         </div>
 
         {agent.description && (
-          <Text type="secondary" className="block mt-2">
+          <div className="mt-2 text-sm text-gray-600">
             {agent.description}
-          </Text>
+          </div>
         )}
-      </Card>
+      </div>
 
-      {/* 对话区域 */}
-      <Card 
-        className="flex-1 flex flex-col"
-        bodyStyle={{ padding: 0, height: '100%', display: 'flex', flexDirection: 'column' }}
-      >
+      {/* 聊天区域 */}
+      <div className="flex flex-col flex-1">
         {/* 消息列表 */}
-        <div className="flex-1 p-4 overflow-y-auto max-h-96">
+        <div ref={scrollContainerRef} className="overflow-y-auto flex-1 p-4">
           {messages.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <MessageOutlined className="text-4xl mb-2" />
-              <div>开始与 {agent.name} 对话</div>
+            <div className="flex justify-center items-center h-full">
+              <Welcome
+                title="开始对话"
+                description={`与 ${agent.name} 开始智能对话`}
+                icon={<RobotOutlined style={{ fontSize: 48, color: '#1890ff' }} />}
+              />
             </div>
           ) : (
             <div className="space-y-4">
-              {messages.map(message => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    <div className="text-sm">{message.content}</div>
-                    <div className={`text-xs mt-1 ${
-                      message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                    }`}>
-                      {message.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              {/* AI 思考状态 */}
-              {isThinking && (
+              <Bubble.List
+                items={messages.map((message) => {
+                  const isUser = message.role === 'user';
+                  const handleCopy = (text: string) => {
+                    copyToClipboard(text, message.id);
+                  };
+
+                  return {
+                    id: message.id,
+                    role: isUser ? 'user' : 'assistant',
+                    content: message.content || '...',
+                    timestamp: message.streaming ? '生成中...' : message.timestamp.toLocaleTimeString(),
+                    loading: message.streaming,
+                    variant: message.error ? 'outlined' : undefined,
+                    placement: isUser ? 'end' : 'start',
+                    messageRender: isUser ? undefined : (content) => renderMarkdown(content, handleCopy),
+                    avatar: isUser ? {
+                      style: {
+                        background: '#52c41a',
+                        color: 'white',
+                      },
+                      children: <UserOutlined />,
+                    } : {
+                      style: {
+                        background: getAgentRoleColor(agent.role).replace('bg-', '').replace('-500', ''),
+                        color: 'white',
+                      },
+                      children: <RobotOutlined />,
+                    },
+                    actions: [{
+                      key: 'copy',
+                      icon: <CopyOutlined />,
+                      onClick: () => handleCopy(message.content),
+                      title: '复制消息',
+                    }],
+                  };
+                })}
+                onCopy={(event: any) => {
+                  const content = window.getSelection()?.toString() || '';
+                  copyToClipboard(content, 'bubble-list');
+                }}
+              />
+
+              {isThinking && !hasStreamingMessage && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 px-4 py-3 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <div className="loading-dots">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                      </div>
-                      <Text type="secondary" className="text-sm">
-                        {agent.name} 正在思考...
-                      </Text>
-                    </div>
-                  </div>
+                  <Bubble
+                    content="思考中..."
+                    loading={true}
+                    placement="start"
+                    avatar={{
+                      style: {
+                        background: getAgentRoleColor(agent.role).replace('bg-', '').replace('-500', ''),
+                        color: 'white',
+                      },
+                      children: <RobotOutlined />,
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -216,42 +610,45 @@ export function AgentChatInterface({ agent, onBack }: AgentChatInterfaceProps) {
         </div>
 
         {/* 输入区域 */}
-        <div className="border-t p-4">
-          <Alert
-            message="注意"
-            description="这是一个演示界面。完整的 Claude Code SDK 集成将在后续版本中实现。"
-            type="info"
-            showIcon
-            className="mb-4"
-            closable
+        <div className="p-4 bg-white border-t">
+
+          <Sender
+            value={inputValue}
+            onChange={setInputValue}
+            onSubmit={handleSendMessage}
+            placeholder={`给 ${agent.name} 发消息...`}
+            disabled={isThinking}
+            loading={isThinking}
+            prefix={
+              <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
+                <UserOutlined className="text-white text-sm" />
+              </div>
+            }
+            actions={[
+              <Button
+                key="send"
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || isThinking}
+                loading={isThinking}
+              >
+                发送
+              </Button>
+            ]}
           />
-          
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder={`向 ${agent.name} 发送消息...`}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isThinking}
-            />
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isThinking}
-              loading={isThinking}
-            >
-              发送
-            </Button>
-          </div>
-          
-          <div className="mt-2 text-xs text-gray-500">
-            按 Enter 发送消息 • 支持的工具: {agent.enabledTools.join(', ')}
+
+          <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+            <span>已启用工具: {agent.enabledTools?.length ? agent.enabledTools.join(', ') : '无'}</span>
+            {isThinking && (
+              <span className="flex items-center text-blue-500">
+                <LoadingOutlined className="mr-1 animate-spin" />
+                处理中...
+              </span>
+            )}
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

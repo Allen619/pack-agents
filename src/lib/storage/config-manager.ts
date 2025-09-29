@@ -2,6 +2,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { nanoid } from 'nanoid';
+import dayjs from 'dayjs';
 import {
   AgentConfig,
   AgentTemplate,
@@ -10,13 +11,48 @@ import {
   AppConfig,
   LLMProviderConfig,
   ToolsConfig,
-} from '@/types';
+} from '@/lib/types';
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  ttl: number; // Time to live in milliseconds
+}
 
 export class ConfigManager {
   private configRoot: string;
+  private agentCache: Map<string, CacheEntry<AgentConfig>> = new Map();
+  private workflowCache: Map<string, CacheEntry<WorkflowConfig>> = new Map();
+  private defaultTTL = 5 * 60 * 1000; // 5 minutes cache
 
   constructor(configRoot: string = './config') {
     this.configRoot = configRoot;
+  }
+
+  // 缓存辅助方法
+  private getCacheEntry<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
+    const entry = cache.get(key);
+    if (!entry) return null;
+
+    const now = Date.now();
+    if (now - entry.timestamp > entry.ttl) {
+      cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  private setCacheEntry<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T, ttl: number = this.defaultTTL): void {
+    cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
+    });
+  }
+
+  private invalidateCache(cache: Map<string, CacheEntry<any>>, key: string): void {
+    cache.delete(key);
   }
 
   async initialize(): Promise<void> {
@@ -169,7 +205,7 @@ export class ConfigManager {
 
   // Agent 操作
   async saveAgent(agent: AgentConfig): Promise<void> {
-    agent.metadata.updatedAt = new Date().toISOString();
+    agent.metadata.updatedAt = dayjs().toISOString();
 
     const filePath = path.join(
       this.configRoot,
@@ -178,9 +214,21 @@ export class ConfigManager {
     );
 
     await fs.writeFile(filePath, JSON.stringify(agent, null, 2), 'utf-8');
+
+    // 使缓存失效
+    this.invalidateCache(this.agentCache, agent.id);
+
+    // 重新缓存更新后的数据
+    this.setCacheEntry(this.agentCache, agent.id, agent);
   }
 
   async loadAgent(id: string): Promise<AgentConfig | null> {
+    // 首先检查缓存
+    const cached = this.getCacheEntry(this.agentCache, id);
+    if (cached) {
+      return cached;
+    }
+
     try {
       const filePath = path.join(
         this.configRoot,
@@ -188,7 +236,12 @@ export class ConfigManager {
         `${id}.json`
       );
       const content = await fs.readFile(filePath, 'utf-8');
-      return JSON.parse(content);
+      const agent = JSON.parse(content);
+
+      // 缓存结果
+      this.setCacheEntry(this.agentCache, id, agent);
+
+      return agent;
     } catch (error: any) {
       if (error.code === 'ENOENT') return null;
       throw error;
@@ -290,8 +343,8 @@ export class ConfigManager {
         version: '1.0.0',
         author: 'user',
         tags: template.tags,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: dayjs().toISOString(),
+        updatedAt: dayjs().toISOString(),
         usage: {
           totalExecutions: 0,
           successRate: 0,
@@ -306,7 +359,7 @@ export class ConfigManager {
 
   // 工作流操作
   async saveWorkflow(workflow: WorkflowConfig): Promise<void> {
-    workflow.metadata.updatedAt = new Date().toISOString();
+    workflow.metadata.updatedAt = dayjs().toISOString();
     const filePath = path.join(
       this.configRoot,
       'workflows',
@@ -359,7 +412,7 @@ export class ConfigManager {
 
   // 执行记录操作
   async saveExecution(execution: ExecutionRecord): Promise<void> {
-    const date = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const date = dayjs().format('YYYY-MM'); // YYYY-MM
     const dirPath = path.join(this.configRoot, 'executions', date);
     await fs.mkdir(dirPath, { recursive: true });
 

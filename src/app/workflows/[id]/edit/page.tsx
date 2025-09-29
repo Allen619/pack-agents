@@ -8,6 +8,7 @@ import { FlowCanvasEditor } from '@/components/workflows/FlowCanvasEditor';
 import { useWorkflow, useWorkflows } from '@/hooks/useWorkflows';
 import { PageHeader, ErrorBoundary } from '@/components';
 import { WorkflowConfig } from '@/lib/types';
+import AppLayout from '@/components/layout/AppLayout';
 
 const { TabPane } = Tabs;
 
@@ -46,52 +47,61 @@ export default function EditWorkflowPage({ params }: { params: { id: string } })
 
   if (error) {
     return (
-      <div className="edit-workflow-page min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <PageHeader
-            title="编辑工作流"
-            description="工作流不存在或加载失败"
-            onBack={() => router.back()}
-          />
-          <Card className="mt-6">
-            <div className="text-center py-8">
-              <p className="text-red-500 mb-4">无法加载工作流信息</p>
-              <p className="text-gray-500">请检查工作流 ID 是否正确，或返回工作流列表。</p>
+      <AppLayout>
+        <ErrorBoundary>
+          <div className="edit-workflow-page min-h-screen bg-gray-50 py-8">
+            <div className="max-w-6xl mx-auto px-6">
+              <PageHeader
+                title="编辑工作流"
+                description="工作流不存在或加载失败"
+                onBack={() => router.back()}
+              />
+              <Card className="mt-6">
+                <div className="text-center py-8">
+                  <p className="text-red-500 mb-4">无法加载工作流信息</p>
+                  <p className="text-gray-500">请检查工作流 ID 是否正确，或返回工作流列表。</p>
+                </div>
+              </Card>
             </div>
-          </Card>
-        </div>
-      </div>
+          </div>
+        </ErrorBoundary>
+      </AppLayout>
     );
   }
 
   if (isLoading || !workflow) {
     return (
-      <div className="edit-workflow-page min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <PageHeader
-            title="编辑工作流"
-            description="加载工作流信息中..."
-            onBack={() => router.back()}
-          />
-          <Card className="mt-6">
-            <div className="flex justify-center py-12">
-              <Spin size="large" />
+      <AppLayout>
+        <ErrorBoundary>
+          <div className="edit-workflow-page min-h-screen bg-gray-50 py-8">
+            <div className="max-w-6xl mx-auto px-6">
+              <PageHeader
+                title="编辑工作流"
+                description="加载工作流信息中..."
+                onBack={() => router.back()}
+              />
+              <Card className="mt-6">
+                <div className="flex justify-center py-12">
+                  <Spin size="large" />
+                </div>
+              </Card>
             </div>
-          </Card>
-        </div>
-      </div>
+          </div>
+        </ErrorBoundary>
+      </AppLayout>
     );
   }
 
   return (
-    <ErrorBoundary>
-      <div className="edit-workflow-page min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <PageHeader
-            title={`编辑工作流: ${workflow.name}`}
-            description="修改工作流配置，管理 Agent 团队和执行流程"
-            onBack={() => router.back()}
-          />
+    <AppLayout>
+      <ErrorBoundary>
+        <div className="edit-workflow-page min-h-screen bg-gray-50 py-8">
+          <div className="max-w-6xl mx-auto px-6">
+            <PageHeader
+              title={`编辑工作流: ${workflow.name}`}
+              description="修改工作流配置，管理 Agent 团队和执行流程"
+              onBack={() => router.back()}
+            />
 
           <div className="mt-6">
             <Tabs defaultActiveKey="basic" size="large">
@@ -125,6 +135,7 @@ export default function EditWorkflowPage({ params }: { params: { id: string } })
           </div>
         </div>
       </div>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </AppLayout>
   );
 }

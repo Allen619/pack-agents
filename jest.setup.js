@@ -1,5 +1,10 @@
 import '@testing-library/jest-dom';
 
+// Mock nanoid
+jest.mock('nanoid', () => ({
+  nanoid: () => 'test-nanoid-123456',
+}));
+
 // Mock Next.js router
 jest.mock('next/router', () => ({
   useRouter() {

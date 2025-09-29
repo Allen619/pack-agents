@@ -1,6 +1,10 @@
 // Pack Agents 工具函数库
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -181,6 +185,10 @@ export function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
+export function formatDistanceToNow(date: string | Date): string {
+  return dayjs(date).fromNow();
+}
+
 export function mergeDeep(target: any, source: any): any {
   const result = { ...target };
 
@@ -197,4 +205,24 @@ export function mergeDeep(target: any, source: any): any {
   }
 
   return result;
+}
+
+export function getPagination<T>(
+  items: T[],
+  page: number,
+  pageSize: number
+): { items: T[]; pagination: { total: number; page: number; pageSize: number; totalPages: number } } {
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedItems = items.slice(startIndex, endIndex);
+
+  return {
+    items: paginatedItems,
+    pagination: {
+      total: items.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(items.length / pageSize)
+    }
+  };
 }
