@@ -2,19 +2,93 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Space, Typography, Spin, Alert, Statistic, Row, Col } from 'antd';
-import { 
-  RobotOutlined, 
-  ShareAltOutlined, 
-  PlayCircleOutlined,
-  PlusOutlined,
-  FileTextOutlined
-} from '@ant-design/icons';
+import dynamic from 'next/dynamic';
+
+// 动态导入 Ant Design 组件，减少首屏包大小
+const Card = dynamic(() => import('antd').then(mod => mod.Card), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded" />,
+  ssr: false
+});
+
+const Button = dynamic(() => import('antd').then(mod => mod.Button), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-10 w-20 rounded" />,
+  ssr: false
+});
+
+const Space = dynamic(() => import('antd').then(mod => mod.Space), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-10 rounded" />,
+  ssr: false
+});
+
+const Typography = dynamic(() => import('antd').then(mod => mod.Typography), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-8 rounded" />,
+  ssr: false
+});
+
+const Spin = dynamic(() => import('antd').then(mod => mod.Spin), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-4 rounded" />,
+  ssr: false
+});
+
+const Alert = dynamic(() => import('antd').then(mod => mod.Alert), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-16 rounded" />,
+  ssr: false
+});
+
+const Statistic = dynamic(() => import('antd').then(mod => mod.Statistic), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-20 rounded" />,
+  ssr: false
+});
+
+const Row = dynamic(() => import('antd').then(mod => mod.Row), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-10 rounded" />,
+  ssr: false
+});
+
+const Col = dynamic(() => import('antd').then(mod => mod.Col), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-10 rounded" />,
+  ssr: false
+});
+
+// 图标组件动态导入
+const RobotOutlined = dynamic(() => import('@ant-design/icons').then(mod => mod.RobotOutlined), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-6 w-6 rounded" />,
+  ssr: false
+});
+
+const ShareAltOutlined = dynamic(() => import('@ant-design/icons').then(mod => mod.ShareAltOutlined), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-6 w-6 rounded" />,
+  ssr: false
+});
+
+const PlayCircleOutlined = dynamic(() => import('@ant-design/icons').then(mod => mod.PlayCircleOutlined), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-6 w-6 rounded" />,
+  ssr: false
+});
+
+const PlusOutlined = dynamic(() => import('@ant-design/icons').then(mod => mod.PlusOutlined), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-6 w-6 rounded" />,
+  ssr: false
+});
+
+const FileTextOutlined = dynamic(() => import('@ant-design/icons').then(mod => mod.FileTextOutlined), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-6 w-6 rounded" />,
+  ssr: false
+});
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { ApiResponse, AgentConfig, WorkflowConfig, ExecutionRecord } from '@/types';
 
-const { Title, Text } = Typography;
+// 动态获取 Typography 组件的子组件
+const Title = dynamic(() => import('antd').then(mod => mod.Typography.Title), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-8 w-32 rounded" />,
+  ssr: false
+});
+
+const Text = dynamic(() => import('antd').then(mod => mod.Typography.Text), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-4 w-24 rounded" />,
+  ssr: false
+});
 
 interface DashboardData {
   agents: AgentConfig[];
@@ -34,43 +108,117 @@ export default function HomePage() {
   const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
+    // 立即显示缓存数据（如果有）
+    const cachedData = getCachedDashboardData();
+    if (cachedData) {
+      setData(cachedData);
+      setLoading(false);
+    }
+
+    // 然后异步获取最新数据
     loadDashboardData();
   }, []);
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // 缓存管理
+const CACHE_KEY = 'dashboard_data';
+const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
 
-      const response = await fetch('/api/config');
-      const result: ApiResponse<DashboardData> = await response.json();
+const getCachedDashboardData = (): DashboardData | null => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
 
-      if (result.success) {
-        setData(result.data);
-      } else {
-        setError(result.error?.message || '加载失败');
-      }
-    } catch (err) {
-      setError('网络请求失败');
-      console.error('Load dashboard data error:', err);
-    } finally {
-      setLoading(false);
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_DURATION) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
     }
-  };
+
+    return data;
+  } catch {
+    return null;
+  }
+};
+
+const setCachedDashboardData = (data: DashboardData) => {
+  try {
+    const cacheData = {
+      data,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.warn('Failed to cache dashboard data:', error);
+  }
+};
+
+const loadDashboardData = async () => {
+  try {
+    setError(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+
+    const response = await fetch('/api/config', {
+      signal: controller.signal,
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result: ApiResponse<DashboardData> = await response.json();
+
+    if (result.success) {
+      setData(result.data);
+      setCachedDashboardData(result.data); // 缓存数据
+    } else {
+      setError(result.error?.message || '加载失败');
+    }
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      setError('请求超时，请重试');
+    } else {
+      setError('网络请求失败');
+    }
+    console.error('Load dashboard data error:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const initializeConfig = async () => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
+
       const response = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'initialize' })
+        body: JSON.stringify({ action: 'initialize' }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const result = await response.json();
       if (result.success) {
         await loadDashboardData();
+      } else {
+        setError(result.error?.message || '初始化失败');
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('初始化超时，请重试');
+      } else {
+        setError('初始化失败');
+      }
       console.error('Initialize config error:', err);
     }
   };
