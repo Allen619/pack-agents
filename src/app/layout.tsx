@@ -7,7 +7,13 @@ import PerformanceProvider from '@/components/performance/PerformanceProvider';
 import QueryProvider from '@/components/providers/QueryProvider';
 import '@/styles/globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-inter',
+  fallback: ['system-ui', 'arial', 'sans-serif']
+});
 
 export const metadata: Metadata = {
   title: 'Pack Agents - 多Agent工作流管理平台',
