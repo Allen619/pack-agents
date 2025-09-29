@@ -1,5 +1,5 @@
 // Agent 配置表单组件
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Form,
   Input,
@@ -12,7 +12,12 @@ import {
   Row,
   Col,
 } from 'antd';
-import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  MinusCircleOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+} from '@ant-design/icons';
 import { AgentConfig, LLMConfig } from '@/types';
 
 const { TextArea } = Input;
@@ -64,6 +69,7 @@ export function AgentConfigForm({
   loading = false,
 }: AgentConfigFormProps) {
   const [form] = Form.useForm();
+  const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
     if (agent) {
@@ -86,6 +92,7 @@ export function AgentConfigForm({
           apiKey: agent.llmConfig?.apiKey ? MASKED_API_KEY : '',
           capabilities: capabilitySelections.length ? capabilitySelections : ['language'],
         },
+        knowledgeBasePaths: agent.knowledgeBasePaths?.[0] || '',
       });
     } else {
       form.setFieldsValue({
@@ -97,7 +104,7 @@ export function AgentConfigForm({
           apiKey: '',
           capabilities: ['language'],
         },
-        knowledgeBasePaths: [],
+        knowledgeBasePaths: '',
         enabledTools: ['Read', 'List'],
         metadata: {
           author: '',
@@ -140,8 +147,7 @@ export function AgentConfigForm({
           capabilities,
           parameters: llmConfig.parameters || {},
         },
-        knowledgeBasePaths:
-          values.knowledgeBasePaths?.filter((item: string) => item?.trim()) || [],
+        knowledgeBasePaths: values.knowledgeBasePaths ? [values.knowledgeBasePaths].filter(Boolean) : [],
         enabledTools: values.enabledTools || [],
         metadata: {
           ...values.metadata,
@@ -164,7 +170,7 @@ export function AgentConfigForm({
     >
       <Row gutter={24}>
         <Col span={24}>
-          <Card title="基本信息" className="mb-4">
+          <Card title="基本信息" className="mb-6">
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
@@ -215,7 +221,7 @@ export function AgentConfigForm({
         </Col>
 
         <Col span={24}>
-          <Card title="LLM 配置" className="mb-4">
+          <Card title="LLM 配置" className="mb-6">
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
@@ -255,9 +261,18 @@ export function AgentConfigForm({
                   label="API Key"
                   rules={[{ required: true, message: '请输入密钥' }]}
                 >
-                  <Input.Password
+                  <Input
                     placeholder="请输入密钥"
-                    visibilityToggle
+                    type={showApiKey ? 'text' : 'password'}
+                    suffix={
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={showApiKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        style={{ border: 'none', background: 'none' }}
+                      />
+                    }
                   />
                 </Form.Item>
               </Col>
@@ -266,7 +281,7 @@ export function AgentConfigForm({
         </Col>
 
         <Col span={12}>
-          <Card title="工具配置" className="mb-4">
+          <Card title="工具配置" className="mb-6">
             <Form.Item
               name="enabledTools"
               label="启用的工具"
@@ -287,44 +302,19 @@ export function AgentConfigForm({
         </Col>
 
         <Col span={12}>
-          <Card title="知识库配置" className="mb-4">
-            <Form.List name="knowledgeBasePaths">
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map((field) => (
-                    <Space
-                      key={field.key}
-                      align="baseline"
-                      style={{ display: 'flex', width: '100%' }}
-                    >
-                      <Form.Item
-                        {...field}
-                        style={{ flex: 1 }}
-                        rules={[{ required: true, message: '请输入路径' }]}
-                      >
-                        <Input placeholder="例如: ./src" style={{ width: '100%' }} />
-                      </Form.Item>
-                      <MinusCircleOutlined onClick={() => remove(field.name)} />
-                    </Space>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add('')}
-                      block
-                      icon={<PlusOutlined />}
-                    >
-                      添加知识库路径
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
+          <Card title="知识库配置" className="mb-6">
+            <Form.Item
+              name="knowledgeBasePaths"
+              label="知识库路径"
+              rules={[{ required: false, message: '请输入路径' }]}
+            >
+              <Input placeholder="例如: ./src" />
+            </Form.Item>
           </Card>
         </Col>
 
         <Col span={24}>
-          <Card title="元数据" className="mb-4">
+          <Card title="元数据" className="mb-6">
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
@@ -362,3 +352,4 @@ export function AgentConfigForm({
     </Form>
   );
 }
+

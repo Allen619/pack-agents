@@ -318,13 +318,13 @@ export function SwimlaneView({
               >
                 <div className="flex items-center space-x-2">
                   <span className="text-xs text-gray-500">#{index + 1}</span>
-                  <Tag size="small">{dep.fromStage}</Tag>
+                  <Tag>{dep.fromStage}</Tag>
                   <span className="text-gray-400">→</span>
-                  <Tag size="small">{dep.toStage}</Tag>
+                  <Tag>{dep.toStage}</Tag>
                 </div>
-                
+
                 {dep.condition && (
-                  <Tag color="orange" size="small">
+                  <Tag color="orange">
                     {dep.condition}
                   </Tag>
                 )}

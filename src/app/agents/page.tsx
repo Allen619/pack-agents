@@ -22,7 +22,7 @@ import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { AgentCard } from '@/components/agents/AgentCard';
+import { AgentCardMemo } from '@/components/agents/AgentCard';
 import { useAgents } from '@/hooks/useAgents';
 import { AgentConfig } from '@/types';
 
@@ -30,12 +30,13 @@ const { Search } = Input;
 const { Option } = Select;
 
 export default function AgentsPage() {
-  const { 
-    agents, 
-    loading, 
-    error, 
-    deleteAgent, 
-    refreshAgents 
+  const {
+    agents,
+    agentsLoading,
+    templatesLoading,
+    error,
+    deleteAgent,
+    refreshAgents
   } = useAgents();
 
   const [searchText, setSearchText] = useState('');
@@ -103,7 +104,7 @@ export default function AgentsPage() {
               <Button 
                 icon={<ReloadOutlined />} 
                 onClick={refreshAgents}
-                loading={loading}
+                loading={agentsLoading}
               >
                 刷新
               </Button>
@@ -194,7 +195,7 @@ export default function AgentsPage() {
         )}
 
         {/* Agent 列表 */}
-        <LoadingState loading={loading}>
+        <LoadingState loading={agentsLoading}>
           {filteredAgents.length === 0 ? (
             <div className="bg-white rounded-lg border p-8">
               <Empty
@@ -221,7 +222,7 @@ export default function AgentsPage() {
             <Row gutter={[16, 16]}>
               {filteredAgents.map(agent => (
                 <Col key={agent.id} xs={24} sm={12} lg={8} xl={6}>
-                  <AgentCard
+                  <AgentCardMemo
                     agent={agent}
                     onEdit={handleEdit}
                     onDelete={handleDelete}

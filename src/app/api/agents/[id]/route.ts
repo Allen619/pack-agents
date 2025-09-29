@@ -7,6 +7,11 @@ import { ApiResponse } from '@/types';
 const configManager = new ConfigManager();
 const validator = new ConfigValidator();
 
+// 缓存控制头部
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60', // 5分钟缓存
+};
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -34,6 +39,8 @@ export async function GET(
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
       },
+    }, {
+      headers: CACHE_HEADERS,
     });
   } catch (error) {
     console.error('Agent GET error:', error);

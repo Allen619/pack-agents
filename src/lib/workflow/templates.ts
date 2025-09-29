@@ -1,5 +1,6 @@
 import { WorkflowConfig, AgentConfig } from '@/lib/types';
 import { generateId } from '@/lib/utils';
+import dayjs from 'dayjs';
 
 export interface WorkflowTemplate {
   id: string;
@@ -460,7 +461,7 @@ export class WorkflowTemplateManager {
       agentMappings?: Record<string, string>; // role -> agentId
     } = {}
   ): Partial<WorkflowConfig> {
-    const workflowId = generateId('workflow');
+    const workflowId = generateId();
 
     // Apply agent mappings or create placeholder agent IDs
     const agentIds: string[] = [];
@@ -483,7 +484,7 @@ export class WorkflowTemplateManager {
       tasks: stage.agentRoles.map((role) => {
         const agentId = agentMappings[role] || `placeholder-${role}`;
         return {
-          id: generateId('task'),
+          id: generateId(),
           agentId,
           taskType: this.inferTaskType(role),
           inputs: {},
@@ -557,11 +558,11 @@ export class WorkflowTemplateManager {
     }));
 
     return {
-      id: generateId('template'),
+      id: generateId(),
       ...templateInfo,
       version: '1.0.0',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: dayjs().toISOString(),
+      updatedAt: dayjs().toISOString(),
       agentRoles,
       executionFlow: {
         stages,

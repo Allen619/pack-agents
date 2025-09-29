@@ -1,0 +1,24 @@
+{
+  "providers": {
+    "claude": {
+      "name": "Anthropic Claude",
+      "models": [
+        "claude-sonnet-4-20250514",
+        "claude-haiku-20250514"
+      ],
+      "defaultModel": "claude-sonnet-4-20250514",
+      "rateLimit": {
+        "requestsPerMinute": 60,
+        "tokensPerMinute": 40000
+      }
+    },
+    "openai": {
+      "name": "OpenAI GPT",
+      "models": [
+        "gpt-4",
+        "gpt-3.5-turbo"
+      ],
+      "defaultModel": "gpt-4"
+    }
+  }
+}

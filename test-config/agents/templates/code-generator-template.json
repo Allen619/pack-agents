@@ -1,0 +1,19 @@
+{
+  "id": "code-generator-template",
+  "name": "代码生成器模板",
+  "description": "根据需求自动生成代码的 Agent 模板",
+  "role": "sub",
+  "systemPrompt": "你是一个代码生成专家，根据需求编写高质量的代码。请确保代码遵循最佳实践，具有良好的可读性和可维护性。",
+  "enabledTools": [
+    "Write",
+    "Edit",
+    "Read",
+    "List"
+  ],
+  "tags": [
+    "code-generation",
+    "development",
+    "automation"
+  ],
+  "category": "development"
+}

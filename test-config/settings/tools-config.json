@@ -1,0 +1,33 @@
+{
+  "tools": {
+    "claudeCode": {
+      "enabled": true,
+      "allowedCommands": [
+        "read",
+        "write",
+        "list",
+        "grep",
+        "search"
+      ],
+      "restrictedPaths": [
+        "/system",
+        "/etc",
+        "/root"
+      ],
+      "maxFileSize": "10MB",
+      "timeout": 30000
+    },
+    "fileSystem": {
+      "enabled": true,
+      "allowedExtensions": [
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".json",
+        ".md"
+      ],
+      "maxDepth": 10
+    }
+  }
+}

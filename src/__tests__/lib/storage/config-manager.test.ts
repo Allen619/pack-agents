@@ -4,8 +4,17 @@ import fs from 'fs/promises';
 import path from 'path';
 
 // Mock file system operations
-jest.mock('fs/promises');
-const mockFs = fs as jest.Mocked<typeof fs>;
+const mockFs = {
+  access: jest.fn(),
+  mkdir: jest.fn(),
+  writeFile: jest.fn(),
+  readFile: jest.fn(),
+  readdir: jest.fn(),
+  unlink: jest.fn(),
+  stat: jest.fn(),
+};
+
+jest.mock('fs/promises', () => mockFs);
 
 // Mock path module
 jest.mock('path', () => ({
