@@ -71,6 +71,12 @@ export function AgentConfigForm({
   const [form] = Form.useForm();
   const [showApiKey, setShowApiKey] = useState(false);
 
+  // 获取显示用的 API Key 值
+  const getDisplayApiKey = (apiKey?: string) => {
+    if (!apiKey) return '';
+    return showApiKey ? apiKey : MASKED_API_KEY;
+  };
+
   useEffect(() => {
     if (agent) {
       const capabilities = agent.llmConfig?.capabilities || {
@@ -89,7 +95,7 @@ export function AgentConfigForm({
           provider: agent.llmConfig?.provider || DEFAULT_LLM_CONFIG.provider,
           model: agent.llmConfig?.model || '',
           baseUrl: agent.llmConfig?.baseUrl || DEFAULT_LLM_CONFIG.baseUrl,
-          apiKey: agent.llmConfig?.apiKey ? MASKED_API_KEY : '',
+          apiKey: agent.llmConfig?.apiKey || '',
           capabilities: capabilitySelections.length ? capabilitySelections : ['language'],
         },
         knowledgeBasePaths: agent.knowledgeBasePaths?.[0] || '',
@@ -264,11 +270,20 @@ export function AgentConfigForm({
                   <Input
                     placeholder="请输入密钥"
                     type={showApiKey ? 'text' : 'password'}
+                    value={getDisplayApiKey(form.getFieldValue(['llmConfig', 'apiKey']))}
+                    onChange={(e) => {
+                      form.setFieldsValue({
+                        llmConfig: {
+                          ...form.getFieldValue('llmConfig'),
+                          apiKey: e.target.value,
+                        },
+                      });
+                    }}
                     suffix={
                       <Button
                         type="text"
                         size="small"
-                        icon={showApiKey ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                        icon={showApiKey ? <EyeOutlined /> : <EyeInvisibleOutlined />}
                         onClick={() => setShowApiKey(!showApiKey)}
                         style={{ border: 'none', background: 'none' }}
                       />

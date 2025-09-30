@@ -160,6 +160,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [shouldClearContext, setShouldClearContext] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -231,6 +232,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     setMessages([buildWelcomeMessage(agent)]);
     setInputValue('');
     setIsThinking(false);
+    setSessionId(null);
     antdMessage.success('聊天记录已清空');
   }, [agent]);
 
@@ -251,8 +253,38 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       activeRequest.current = null;
     }
     setShouldClearContext(prev => !prev); // 切换状态
-    antdMessage.success('上下文已清除，下一次对话将重新开始');
+    setSessionId(null);
+    antdMessage.success('上下文已清除，下次对话将重新开始');
   }, [agent]);
+
+  const renderMessageWithCopy = useCallback(
+    (message: ChatMessage) => {
+      const contentNode = message.role === 'assistant'
+        ? renderMarkdown(message.content, (text) => copyToClipboard(text, message.id))
+        : (
+          <div className="whitespace-pre-wrap break-words text-sm text-gray-800">
+            {message.content || '...'}
+          </div>
+        );
+
+      return (
+        <div className="space-y-2">
+          {contentNode}
+          <div className="flex justify-end">
+            <Button
+              size="small"
+              type="text"
+              icon={<CopyOutlined />}
+              onClick={() => copyToClipboard(message.content || '', message.id)}
+            >
+              复制此消息
+            </Button>
+          </div>
+        </div>
+      );
+    },
+    []
+  );
 
   const handleSendMessage = useCallback(async () => {
     const content = inputValue.trim();
@@ -280,16 +312,29 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       streaming: true,
     };
 
-    const payload = {
+    const shouldResumeSession = Boolean(sessionId) && !shouldClearContext;
+
+    const payload: {
+      messages: { role: ChatMessage['role']; content: string }[];
+      sessionId?: string;
+      options: {
+        maxTurns: number;
+        continue: boolean;
+      };
+    } = {
       messages: [...messages, userMessage].map(({ role, content: rawContent }) => ({
         role,
         content: rawContent,
       })),
       options: {
         maxTurns: DEFAULT_MAX_TURNS,
-        continue: !shouldClearContext, // 根据状态决定是否继续上下文
+        continue: shouldResumeSession,
       },
     };
+
+    if (shouldResumeSession && sessionId) {
+      payload.sessionId = sessionId;
+    }
 
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setInputValue('');
@@ -394,6 +439,10 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
           return;
         }
 
+        if (typeof event.sessionId === 'string' && event.sessionId) {
+          setSessionId(event.sessionId);
+        }
+
         switch (event.type) {
           case 'delta':
             if (typeof event.text === 'string') {
@@ -457,7 +506,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       }
       setIsThinking(false);
     }
-  }, [agent.id, inputValue, isThinking, messages, upsertAssistantMessage]);
+  }, [agent.id, inputValue, isThinking, messages, sessionId, shouldClearContext, upsertAssistantMessage]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -549,9 +598,6 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
               <Bubble.List
                 items={messages.map((message) => {
                   const isUser = message.role === 'user';
-                  const handleCopy = (text: string) => {
-                    copyToClipboard(text, message.id);
-                  };
 
                   return {
                     id: message.id,
@@ -561,7 +607,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
                     loading: message.streaming,
                     variant: message.error ? 'outlined' : undefined,
                     placement: isUser ? 'end' : 'start',
-                    messageRender: isUser ? undefined : (content) => renderMarkdown(content, handleCopy),
+                    messageRender: () => renderMessageWithCopy(message),
                     avatar: isUser ? {
                       style: {
                         background: '#52c41a',
@@ -575,12 +621,6 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
                       },
                       children: <RobotOutlined />,
                     },
-                    actions: [{
-                      key: 'copy',
-                      icon: <CopyOutlined />,
-                      onClick: () => handleCopy(message.content),
-                      title: '复制消息',
-                    }],
                   };
                 })}
                 onCopy={(event: any) => {

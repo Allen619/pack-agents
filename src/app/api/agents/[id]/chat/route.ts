@@ -30,8 +30,10 @@ type ChatMessage = {
 
 type ChatRequestBody = {
   messages: ChatMessage[];
+  sessionId?: string;
   options?: {
     maxTurns?: number;
+    continue?: boolean;
   };
 };
 
@@ -139,10 +141,21 @@ export async function POST(
     }
 
     const abortController = new AbortController();
+    const resumeSessionId =
+      body.options?.continue === false ? undefined : body.sessionId?.trim() || undefined;
 
     const stream = new ReadableStream({
       async start(controller) {
         let assistantText = '';
+        let activeSessionId = resumeSessionId;
+
+        const pushChunk = (payload: Record<string, unknown>) => {
+          if (activeSessionId) {
+            sendChunk(controller, { ...payload, sessionId: activeSessionId });
+          } else {
+            sendChunk(controller, payload);
+          }
+        };
 
         // 使用简单的字符串prompt，符合单消息输入模式
         const userPrompt = lastMessage.content;
@@ -158,12 +171,24 @@ export async function POST(
           abortController,
         };
 
+        if (resumeSessionId) {
+          options.resume = resumeSessionId;
+        }
+
+        if (typeof body.options?.continue === 'boolean') {
+          options.continue = body.options.continue;
+        }
+
         console.log('Starting query with options:', { options, promptLength: userPrompt.length });
 
         try {
           // 使用单消息输入模式，避免AsyncGenerator类型问题
           for await (const event of query({ prompt: userPrompt, options })) {
             console.log('Received event:', event.type);
+
+            if (!activeSessionId && typeof (event as any).session_id === 'string') {
+              activeSessionId = (event as any).session_id;
+            }
 
             // 处理不同类型的事件
             switch (event.type) {
@@ -177,7 +202,7 @@ export async function POST(
                         const text = block.text;
                         console.log('Text block received, length:', text.length);
                         assistantText += text;
-                        sendChunk(controller, { type: 'delta', text });
+                        pushChunk({ type: 'delta', text });
                       }
                     }
                   }
@@ -187,7 +212,7 @@ export async function POST(
               case 'result':
                 // 处理最终结果 - 在收到result事件时结束流
                 console.log('Result event received, finishing stream');
-                sendChunk(controller, { type: 'done', text: assistantText });
+                pushChunk({ type: 'done', text: assistantText });
                 controller.close();
                 return;
 
@@ -201,17 +226,17 @@ export async function POST(
                 // 对于其他未知事件类型，如果有text属性则处理
                 if ('text' in event && typeof event.text === 'string') {
                   assistantText += event.text;
-                  sendChunk(controller, { type: 'delta', text: event.text });
+                  pushChunk({ type: 'delta', text: event.text });
                 }
             }
           }
 
           // 如果流正常结束
-          sendChunk(controller, { type: 'done', text: assistantText });
+          pushChunk({ type: 'done', text: assistantText });
           controller.close();
         } catch (error: any) {
           console.error('Query error:', error);
-          sendChunk(controller, {
+          pushChunk({
             type: 'error',
             message: error?.message || '查询失败',
           });
@@ -244,3 +269,4 @@ export async function POST(
     );
   }
 }
+
