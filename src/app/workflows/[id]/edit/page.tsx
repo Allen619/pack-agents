@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Tabs, Card, Spin } from 'antd';
+import { Tabs, Card } from 'antd';
+import { LoadingSpinner } from '@/lib/utils/lazy-loading';
 import { WorkflowConfigForm } from '@/components/workflows/WorkflowConfigForm';
 import { AgentTeamAssembly } from '@/components/workflows/AgentTeamAssembly';
 import { FlowCanvasEditor } from '@/components/workflows/FlowCanvasEditor';
@@ -80,11 +81,9 @@ export default function EditWorkflowPage({ params }: { params: { id: string } })
                 description="加载工作流信息中..."
                 onBack={() => router.back()}
               />
-              <Card className="mt-6">
-                <div className="flex justify-center py-12">
-                  <Spin size="large" />
-                </div>
-              </Card>
+                <Card className="mt-6">
+                  <LoadingSpinner size="large" />
+                </Card>
             </div>
           </div>
         </ErrorBoundary>

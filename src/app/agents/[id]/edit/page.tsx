@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, message, Spin } from 'antd';
+import { Card, message } from 'antd';
 import AppLayout from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AgentConfigForm } from '@/components/agents/AgentConfigForm';
 import { AgentConfig, ApiResponse } from '@/types';
+import { LoadingSpinner } from '@/lib/utils/lazy-loading';
 
 interface EditAgentPageProps {
   params: {
@@ -112,9 +113,7 @@ export default function EditAgentPage({ params }: EditAgentPageProps) {
             description="正在加载 Agent 配置..."
           />
           <Card>
-            <div className="flex items-center justify-center py-20">
-              <Spin size="large" tip="加载 Agent 信息..." />
-            </div>
+            <LoadingSpinner size="large" tip="加载 Agent 信息..." />
           </Card>
         </div>
       </AppLayout>

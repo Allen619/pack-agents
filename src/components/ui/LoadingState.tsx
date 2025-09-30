@@ -1,5 +1,6 @@
 // 加载状态组件
-import { Spin, Card } from 'antd';
+import { Card } from 'antd';
+import { LoadingSpinner } from '@/lib/utils/lazy-loading';
 
 interface LoadingStateProps {
   loading?: boolean;
@@ -17,7 +18,7 @@ export function LoadingState({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Spin size={size} tip={tip} />
+        <LoadingSpinner size={size} tip={tip} />
       </div>
     );
   }
@@ -38,11 +39,13 @@ export function LoadingCard({
   tip = '加载中...', 
   className 
 }: LoadingCardProps) {
-  return (
-    <Card className={className}>
-      <Spin spinning={loading} tip={tip}>
-        {children}
-      </Spin>
-    </Card>
-  );
+  if (loading) {
+    return (
+      <Card className={className}>
+        <LoadingSpinner tip={tip} />
+      </Card>
+    );
+  }
+
+  return <Card className={className}>{children}</Card>;
 }

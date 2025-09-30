@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Spin, message } from 'antd';
+import { message } from 'antd';
+import { LoadingSpinner } from '@/lib/utils/lazy-loading';
 import AppLayout from '@/components/layout/AppLayout';
 import { AgentChatInterface } from '@/components/agents/AgentChatInterface';
 import { AgentConfig, ApiResponse } from '@/types';
@@ -59,7 +60,7 @@ export default function AgentChatPage({ params }: AgentChatPageProps) {
     return (
       <AppLayout>
         <div className="h-full flex items-center justify-center">
-          <Spin size="large" tip="加载 Agent 信息..." />
+          <LoadingSpinner size="large" tip="加载 Agent 信息..." />
         </div>
       </AppLayout>
     );

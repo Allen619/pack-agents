@@ -9,11 +9,11 @@ import {
   Space, 
   Tag, 
   Typography, 
-  Divider,
-  Spin,
-  Alert,
-  Badge
-} from 'antd';
+    Divider,
+    Alert,
+    Badge
+  } from 'antd';
+import { LoadingSpinner } from '@/lib/utils/lazy-loading';
 import { 
   EditOutlined, 
   PlayCircleOutlined, 
@@ -78,11 +78,9 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
             description="加载工作流信息中..."
             onBack={() => router.back()}
           />
-          <Card className="mt-6">
-            <div className="flex justify-center py-12">
-              <Spin size="large" />
-            </div>
-          </Card>
+            <Card className="mt-6">
+              <LoadingSpinner size="large" />
+            </Card>
         </div>
       </div>
     );

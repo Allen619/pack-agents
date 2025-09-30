@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -18,8 +18,8 @@ import {
   Upload,
   Progress,
   Empty,
-  Spin,
 } from 'antd';
+import { LoadingSpinner } from '@/lib/utils/lazy-loading';
 import {
   FolderOutlined,
   FolderOpenOutlined,
@@ -501,13 +501,9 @@ export const KnowledgeBasePathSelector: React.FC<KnowledgeBasePathSelectorProps>
               allowClear
             />
 
-            {isTreeLoading ? (
-              <div className="text-center py-8">
-                <Spin size="large" />
-                <div className="mt-2">加载文件树中...</div>
-              </div>
-            ) : (
-              <Tree
+            {isTreeLoading ? (
+              <LoadingSpinner size="large" tip="加载文件树中..." />
+            ) : (             <Tree
                 treeData={filteredTreeData}
                 expandedKeys={expandedKeys}
                 onExpand={setExpandedKeys}
@@ -636,3 +632,4 @@ export const KnowledgeBasePathSelector: React.FC<KnowledgeBasePathSelectorProps>
     </div>
   );
 };
+

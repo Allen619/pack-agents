@@ -5,8 +5,12 @@ import zhCN from 'antd/locale/zh_CN';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import PerformanceProvider from '@/components/performance/PerformanceProvider';
 import QueryProvider from '@/components/providers/QueryProvider';
+import dynamic from 'next/dynamic';
 import '@/styles/globals.css';
 
+const ClickInspector = dynamic(() => import('@/components/dev/ClickInspector'), {
+  ssr: false,
+});
 const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
@@ -78,6 +82,7 @@ export default function RootLayout({
           >
             <QueryProvider>
               <PerformanceProvider>
+                <ClickInspector />
                 {children}
               </PerformanceProvider>
             </QueryProvider>

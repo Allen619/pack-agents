@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { LoadingSpinner } from '@/lib/utils/lazy-loading';
 
 // 动态导入 Ant Design 组件，减少首屏包大小
 const Card = dynamic(() => import('antd').then(mod => mod.Card), {
@@ -22,11 +23,6 @@ const Space = dynamic(() => import('antd').then(mod => mod.Space), {
 
 const Typography = dynamic(() => import('antd').then(mod => mod.Typography), {
   loading: () => <div className="animate-pulse bg-gray-200 h-8 rounded" />,
-  ssr: false
-});
-
-const Spin = dynamic(() => import('antd').then(mod => mod.Spin), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-4 rounded" />,
   ssr: false
 });
 
@@ -227,7 +223,7 @@ const loadDashboardData = async () => {
     return (
       <AppLayout>
         <div className="h-full flex items-center justify-center">
-          <Spin size="large" tip="加载中..." />
+          <LoadingSpinner size="large" tip="加载中..." />
         </div>
       </AppLayout>
     );

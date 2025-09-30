@@ -5,6 +5,7 @@ import {
   Space,
   Tag,
   Alert,
+  Select,
   message as antdMessage,
 } from 'antd';
 import {
@@ -29,6 +30,36 @@ import { AgentConfig } from '@/types';
 import { getAgentRoleColor } from '@/utils';
 
 const DEFAULT_MAX_TURNS = 6;
+
+type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
+
+const PERMISSION_MODE_OPTIONS: Array<{
+  value: PermissionMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'acceptEdits',
+    label: 'acceptEdits（自动接受编辑）',
+    description: '自动接受常规文件编辑操作，仍会对潜在风险请求确认。',
+  },
+  {
+    value: 'default',
+    label: 'default（逐项确认）',
+    description: '每次工具调用都需人工确认，适合严格审核或演示场景。',
+  },
+  {
+    value: 'bypassPermissions',
+    label: 'bypassPermissions（跳过权限）',
+    description: '直接执行所有启用的工具，仅在高度受控环境中使用。',
+  },
+  {
+    value: 'plan',
+    label: 'plan（仅生成计划）',
+    description: '仅输出操作计划，不会实际落地改动，适合先评估方案。',
+  },
+];
+
 
 // 复制到剪贴板函数
 const copyToClipboard = async (text: string, messageId: string) => {
@@ -161,6 +192,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
   const [isThinking, setIsThinking] = useState(false);
   const [shouldClearContext, setShouldClearContext] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('acceptEdits');
   const activeRequest = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -184,6 +216,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     setMessages([buildWelcomeMessage(agent)]);
     setInputValue('');
     setIsThinking(false);
+    setPermissionMode('acceptEdits');
     if (activeRequest.current) {
       activeRequest.current.abort();
       activeRequest.current = null;
@@ -286,6 +319,8 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     []
   );
 
+  const currentPermissionMode = PERMISSION_MODE_OPTIONS.find(option => option.value === permissionMode);
+
   const handleSendMessage = useCallback(async () => {
     const content = inputValue.trim();
     if (!content) return;
@@ -320,6 +355,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       options: {
         maxTurns: number;
         continue: boolean;
+        permissionMode: PermissionMode;
       };
     } = {
       messages: [...messages, userMessage].map(({ role, content: rawContent }) => ({
@@ -329,6 +365,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       options: {
         maxTurns: DEFAULT_MAX_TURNS,
         continue: shouldResumeSession,
+        permissionMode,
       },
     };
 
@@ -506,7 +543,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       }
       setIsThinking(false);
     }
-  }, [agent.id, inputValue, isThinking, messages, sessionId, shouldClearContext, upsertAssistantMessage]);
+  }, [agent.id, inputValue, isThinking, messages, permissionMode, sessionId, shouldClearContext, upsertAssistantMessage]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -651,6 +688,20 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
 
         {/* 输入区域 */}
         <div className="p-4 bg-white border-t">
+          <Space size={8} wrap className="items-center mb-2 text-xs text-gray-600">
+            <span className="text-gray-500">权限模式</span>
+            <Select<PermissionMode>
+              size="small"
+              value={permissionMode}
+              className="min-w-[220px]"
+              onChange={(value) => setPermissionMode(value)}
+              options={PERMISSION_MODE_OPTIONS.map(option => ({ value: option.value, label: option.label }))}
+              popupMatchSelectWidth={false}
+            />
+          </Space>
+          <div className="text-[11px] text-gray-400 mb-3">
+            {currentPermissionMode?.description}
+          </div>
 
           <Sender
             value={inputValue}

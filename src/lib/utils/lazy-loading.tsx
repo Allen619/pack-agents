@@ -1,5 +1,15 @@
-import React, { Suspense } from 'react';
+﻿import React, { Suspense } from 'react';
 import { Spin } from 'antd';
+
+export const LoadingSpinner: React.FC<{ tip?: string; size?: 'small' | 'default' | 'large' }> = ({
+  tip = '加载中...',
+  size = 'default',
+}) => (
+  <div className="flex flex-col items-center justify-center p-8 gap-2 text-center">
+    <Spin size={size} />
+    {tip ? <span className="text-sm text-gray-500">{tip}</span> : null}
+  </div>
+);
 
 // 创建懒加载组件的高阶函数
 export function withLazyLoading<T extends React.ComponentType<any>>(
@@ -10,9 +20,7 @@ export function withLazyLoading<T extends React.ComponentType<any>>(
   
   return React.forwardRef<any, React.ComponentProps<T>>((props, ref) => {
     const DefaultFallback = () => (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <Spin size="large" tip="加载中..." />
-      </div>
+      <LoadingSpinner size="large" tip="加载中..." />
     );
 
     const FallbackComponent = fallbackComponent || DefaultFallback;
@@ -30,9 +38,7 @@ export function withPageLazyLoading<T extends React.ComponentType<any>>(
   lazyComponent: () => Promise<{ default: T }>
 ) {
   const PageFallback = () => (
-    <div className="flex items-center justify-center min-h-screen">
-      <Spin size="large" tip="页面加载中..." />
-    </div>
+    <LoadingSpinner size="large" tip="页面加载中..." />
   );
 
   return withLazyLoading(lazyComponent, PageFallback);
@@ -43,9 +49,7 @@ export function withComponentLazyLoading<T extends React.ComponentType<any>>(
   lazyComponent: () => Promise<{ default: T }>
 ) {
   const ComponentFallback = () => (
-    <div className="flex items-center justify-center p-4">
-      <Spin tip="组件加载中..." />
-    </div>
+    <LoadingSpinner tip="组件加载中..." />
   );
 
   return withLazyLoading(lazyComponent, ComponentFallback);
@@ -65,15 +69,6 @@ export const createLazyRoute = (
 };
 
 // 常用的 Fallback 组件
-export const LoadingSpinner: React.FC<{ tip?: string; size?: 'small' | 'default' | 'large' }> = ({ 
-  tip = '加载中...', 
-  size = 'default' 
-}) => (
-  <div className="flex items-center justify-center p-8">
-    <Spin size={size} tip={tip} />
-  </div>
-);
-
 export const LoadingSkeleton: React.FC = () => (
   <div className="animate-pulse space-y-4 p-4">
     <div className="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -140,3 +135,5 @@ export class PreloadStrategy {
     }
   }
 }
+
+

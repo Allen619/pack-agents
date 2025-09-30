@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import {
   query,
   type Options,
@@ -34,6 +34,7 @@ type ChatRequestBody = {
   options?: {
     maxTurns?: number;
     continue?: boolean;
+    permissionMode?: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
   };
 };
 
@@ -160,9 +161,23 @@ export async function POST(
         // 使用简单的字符串prompt，符合单消息输入模式
         const userPrompt = lastMessage.content;
 
+        const knowledgePaths = [
+          ...(Array.isArray((agent as any)?.knowledgeBasePaths)
+            ? (agent as any).knowledgeBasePaths
+            : []),
+          ...(Array.isArray((agent as any)?.context?.knowledgeBasePaths)
+            ? (agent as any).context.knowledgeBasePaths
+            : []),
+        ]
+          .map((path) => (typeof path === 'string' ? path.trim() : ''))
+          .filter((path): path is string => path.length > 0);
+
+        const [primaryKnowledgePath, ...extraKnowledgePaths] = knowledgePaths;
+
         const options: Options = {
           model,
           maxTurns: body.options?.maxTurns ?? 6,
+          permissionMode: body.options?.permissionMode ?? 'acceptEdits',
           env: {
             ANTHROPIC_BASE_URL: baseUrl,
             ANTHROPIC_AUTH_TOKEN: apiKey,
@@ -170,6 +185,14 @@ export async function POST(
           },
           abortController,
         };
+
+        if (primaryKnowledgePath) {
+          options.cwd = primaryKnowledgePath;
+        }
+
+        if (extraKnowledgePaths.length > 0) {
+          options.additionalDirectories = extraKnowledgePaths;
+        }
 
         if (resumeSessionId) {
           options.resume = resumeSessionId;

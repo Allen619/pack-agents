@@ -29,6 +29,14 @@ import {
 import { ClaudeAgentConfig, MCPServerConfig } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 
+const isAbsolutePath = (value: string) => {
+  if (!value) {
+    return false;
+  }
+  const trimmed = value.trim();
+  return /^(?:[a-zA-Z]:[\\/]|\\\\|\/)/.test(trimmed);
+};
+
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -124,6 +132,15 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
   // 处理表单提交
   const handleSubmit = async (values: any) => {
     try {
+      const normalizedKnowledgePaths = knowledgePaths
+        .map((path) => path.trim())
+        .filter((path) => path.length > 0);
+
+      if (normalizedKnowledgePaths.some((path) => !isAbsolutePath(path))) {
+        message.error('知识库路径必须填写绝对路径，例如 C:\\data\\docs 或 /var/data/docs');
+        return;
+      }
+
       // 构建环境变量对象
       const environmentVariables: Record<string, string> = {};
       envVars.forEach(({ key, value }) => {
@@ -151,7 +168,7 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
           mcpServers: Object.keys(mcpServersConfig).length > 0 ? mcpServersConfig : undefined,
         },
         context: {
-          knowledgeBasePaths: knowledgePaths,
+          knowledgeBasePaths: normalizedKnowledgePaths,
           workingDirectory: process.cwd(), // 默认为当前目录
           environmentVariables: Object.keys(environmentVariables).length > 0 ? environmentVariables : undefined,
         },
@@ -392,34 +409,55 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
         <Card title="执行上下文" className="mb-4">
           {/* 知识库路径 */}
           <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <Text strong>知识库路径</Text>
+            <div className="flex justify-between items-center mb-1">
+              <div className="flex items-center space-x-1">
+                <Text strong>知识库路径</Text>
+                <Tooltip title="填写需要索引的知识库绝对路径，支持多个目录">
+                  <InfoCircleOutlined className="text-gray-400" />
+                </Tooltip>
+              </div>
               <Button 
                 type="dashed" 
                 size="small" 
                 icon={<PlusOutlined />}
                 onClick={addKnowledgePath}
               >
-                添加路径
+                新增路径
               </Button>
             </div>
-            {knowledgePaths.map((path, index) => (
-              <div key={index} className="flex mb-2">
-                <Input
-                  value={path}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateKnowledgePath(index, e.target.value)}
-                  placeholder="输入知识库目录路径"
-                  className="flex-1"
-                />
-                <Button
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => removeKnowledgePath(index)}
-                  className="ml-2"
-                />
-              </div>
-            ))}
+            <Text type="secondary" className="text-xs text-gray-500 block mb-2">
+              例如 C:\data\docs 或 /var/data/docs
+            </Text>
+            {knowledgePaths.map((path, index) => {
+              const trimmedPath = path.trim();
+              const isValidPath = trimmedPath.length === 0 || isAbsolutePath(trimmedPath);
+              return (
+                <div key={index} className="mb-2">
+                  <div className="flex">
+                    <Input
+                      value={path}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateKnowledgePath(index, e.target.value)}
+                      placeholder="请输入知识库绝对路径，例如 D:\data\docs 或 /var/data/docs"
+                      className="flex-1"
+                      status={isValidPath ? undefined : 'error'}
+                      allowClear
+                    />
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => removeKnowledgePath(index)}
+                      className="ml-2"
+                    />
+                  </div>
+                  {!isValidPath && (
+                    <Text type="danger" className="text-xs mt-1 block">
+                      路径需为绝对路径
+                    </Text>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* 环境变量 */}
