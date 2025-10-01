@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
 import { ConfigManager } from '@/lib/storage/config-manager';
 import { ConfigValidator } from '@/lib/storage/validation';
+import { isAbsoluteKnowledgePath, syncMcpBindings } from '@/lib/storage/mcp-binding';
 import { AgentConfig, ApiResponse } from '@/types';
 
 const configManager = new ConfigManager();
@@ -81,6 +82,40 @@ export async function POST(
   try {
     const agentData = await request.json();
 
+    const mcpServerIds = Array.isArray(agentData.mcpServerIds)
+      ? agentData.mcpServerIds
+          .map((id: unknown) => (typeof id === 'string' ? id.trim() : ''))
+          .filter((id: string) => id.length > 0)
+      : [];
+
+    const knowledgeBasePathsInput = Array.isArray(agentData.knowledgeBasePaths)
+      ? agentData.knowledgeBasePaths
+      : typeof agentData.knowledgeBasePaths === 'string'
+        ? [agentData.knowledgeBasePaths]
+        : [];
+
+    const knowledgeBasePaths = knowledgeBasePathsInput
+      .map((input: unknown) => (typeof input === 'string' ? input.trim() : ''))
+      .filter((input: string) => input.length > 0);
+
+    const invalidPaths = knowledgeBasePaths.filter(
+      (item) => !isAbsoluteKnowledgePath(item)
+    );
+
+    if (invalidPaths.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_KNOWLEDGE_PATH',
+            message: '知识库路径必须为绝对路径',
+            details: invalidPaths,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     // 创建Agent配置
     const now = new Date().toISOString();
     const metadataInput = agentData.metadata ?? {};
@@ -104,8 +139,11 @@ export async function POST(
         },
         parameters: llmConfigInput.parameters || {},
       },
-      knowledgeBasePaths: agentData.knowledgeBasePaths || [],
-      enabledTools: agentData.enabledTools || [],
+      knowledgeBasePaths,
+      enabledTools: Array.isArray(agentData.enabledTools)
+        ? agentData.enabledTools
+        : [],
+      mcpServerIds,
       metadata: {
         version: metadataInput.version || '1.0.0',
         author: metadataInput.author || 'user',
@@ -138,6 +176,7 @@ export async function POST(
 
     // 保存Agent
     await configManager.saveAgent(agent);
+    await syncMcpBindings(configManager, agent.knowledgeBasePaths, agent.mcpServerIds);
 
     return NextResponse.json({
       success: true,
@@ -155,7 +194,8 @@ export async function POST(
         success: false,
         error: {
           code: 'AGENT_CREATE_ERROR',
-          message: error instanceof Error ? error.message : '创建Agent失败',
+          message:
+            error instanceof Error ? error.message : '创建Agent失败',
         },
       },
       { status: 500 }

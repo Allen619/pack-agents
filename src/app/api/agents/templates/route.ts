@@ -1,6 +1,7 @@
 // Agent 模板管理 API
 import { NextRequest, NextResponse } from 'next/server';
 import { ConfigManager } from '@/lib/storage/config-manager';
+import { syncMcpBindings } from '@/lib/storage/mcp-binding';
 import { ApiResponse } from '@/types';
 
 const configManager = new ConfigManager();
@@ -56,6 +57,8 @@ export async function POST(
       templateId,
       overrides
     );
+
+    await syncMcpBindings(configManager, agent.knowledgeBasePaths, agent.mcpServerIds);
 
     return NextResponse.json({
       success: true,

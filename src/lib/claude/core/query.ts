@@ -1,5 +1,6 @@
 import { query as claudeQuery } from '@anthropic-ai/claude-code';
-import { ClaudeAgentConfig, ExecutionOptions, AgentResult } from '@/lib/types';
+import { ClaudeAgentConfig, ExecutionOptions, AgentResult, MCPServerConfig, MCPServerDefinition } from '@/lib/types';
+import { ConfigManager } from '@/lib/storage/config-manager';
 import { generateId } from '@/lib/utils';
 
 export interface QueryRequest {
@@ -37,6 +38,7 @@ export interface PromptOptimizationOptions {
  * 提供统一的查询接口和优化功能
  */
 export class ClaudeQueryEngine {
+  private configManager = new ConfigManager();
   private cache: Map<string, QueryResult> = new Map();
   private readonly cacheTTL = 5 * 60 * 1000; // 5分钟缓存
 
@@ -58,7 +60,7 @@ export class ClaudeQueryEngine {
       }
 
       // 构建Claude Code SDK查询选项
-      const queryOptions = this.buildQueryOptions(request.config);
+      const queryOptions = await this.buildQueryOptions(request.config);
 
       // 执行查询
       for await (const message of claudeQuery({
@@ -161,13 +163,58 @@ export class ClaudeQueryEngine {
   /**
    * 构建Claude Code SDK查询选项
    */
-  private buildQueryOptions(config: ClaudeAgentConfig): any {
+  private async buildQueryOptions(config: ClaudeAgentConfig): Promise<any> {
+    const mergedMcp: Record<string, MCPServerConfig> = {
+      ...(config.claudeConfig.mcpServers || {}),
+    };
+
+    try {
+      const registry = await this.configManager.listMcpServers();
+      const model = config.claudeConfig.model;
+
+      registry
+        .filter((server) => server.status !== 'disabled')
+        .filter((server) => {
+          if (!server.providers || server.providers.length === 0) {
+            return true;
+          }
+          return server.providers.includes('claude');
+        })
+        .filter((server) => {
+          if (!server.supportedModels || server.supportedModels.length === 0) {
+            return true;
+          }
+          return server.supportedModels.includes(model);
+        })
+        .forEach((server) => {
+          if (mergedMcp[server.id]) {
+            return;
+          }
+
+          mergedMcp[server.id] = {
+            name: server.name,
+            command: server.command,
+            args: server.args || [],
+            env: server.env || {},
+            timeout: server.timeout,
+            description: server.description,
+            tags: server.tags,
+            providers: server.providers,
+            supportedModels: server.supportedModels,
+            status: server.status,
+            tools: server.tools,
+          };
+        });
+    } catch (error) {
+      console.warn('加载 MCP 注册表失败:', error);
+    }
+
     return {
       model: config.claudeConfig.model,
       allowedTools: config.claudeConfig.allowedTools,
       maxTurns: config.claudeConfig.maxTurns,
       temperature: config.claudeConfig.temperature,
-      mcpServers: config.claudeConfig.mcpServers,
+      mcpServers: Object.keys(mergedMcp).length > 0 ? mergedMcp : undefined,
       systemPrompt: config.claudeConfig.systemPrompt,
       workingDirectory: config.context.workingDirectory,
       environmentVariables: config.context.environmentVariables,

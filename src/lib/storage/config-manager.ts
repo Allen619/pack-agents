@@ -11,6 +11,9 @@ import {
   AppConfig,
   LLMProviderConfig,
   ToolsConfig,
+  MCPRegistryConfig,
+  MCPServerDefinition,
+  MCPServerInput,
 } from '@/lib/types';
 
 interface CacheEntry<T> {
@@ -54,6 +57,45 @@ export class ConfigManager {
   private invalidateCache(cache: Map<string, CacheEntry<any>>, key: string): void {
     cache.delete(key);
   }
+  private getMcpRegistryPath(): string {
+    return path.join(this.configRoot, 'settings', 'mcp-servers.json');
+  }
+
+  private async loadMcpRegistry(): Promise<MCPRegistryConfig> {
+    const registryPath = this.getMcpRegistryPath();
+
+    try {
+      const content = await fs.readFile(registryPath, 'utf-8');
+      const registry = JSON.parse(content) as MCPRegistryConfig;
+      if (!Array.isArray(registry.servers)) {
+        registry.servers = [];
+      } else {
+        registry.servers = registry.servers.map((server) => ({
+          ...server,
+          args: server.args ?? [],
+          env: server.env ?? {},
+          tags: server.tags ?? [],
+          tools: server.tools ?? [],
+          providers: server.providers ?? [],
+          supportedModels: server.supportedModels ?? [],
+          status: server.status ?? 'active',
+        }));
+      }
+      return registry;
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        return { servers: [] };
+      }
+      throw error;
+    }
+  }
+
+  private async saveMcpRegistry(registry: MCPRegistryConfig): Promise<void> {
+    const registryPath = this.getMcpRegistryPath();
+    await fs.mkdir(path.dirname(registryPath), { recursive: true });
+    await fs.writeFile(registryPath, JSON.stringify(registry, null, 2), 'utf-8');
+  }
+
 
   async initialize(): Promise<void> {
     await this.ensureDirectories();
@@ -168,8 +210,6 @@ export class ConfigManager {
         },
       },
     };
-
-    // 创建工具配置
     const toolsConfig: ToolsConfig = {
       tools: {
         claudeCode: {
@@ -187,12 +227,107 @@ export class ConfigManager {
       },
     };
 
+    const now = new Date().toISOString();
+
+    const mcpRegistry: MCPRegistryConfig = {
+      servers: [
+        {
+          id: 'code-quality',
+          name: 'Code Quality MCP',
+          description: '提供代码质量分析的内置 MCP 服务',
+          providers: ['claude'],
+          command: 'node',
+          args: ['./mcp-servers/code-quality/index.js'],
+          env: {
+            ESLINT_CONFIG: './eslint.config.js',
+            PRETTIER_CONFIG: './.prettierrc',
+          },
+          timeout: 300000,
+          status: 'active',
+          tags: ['analysis', 'quality'],
+          supportedModels: ['claude-sonnet-4-20250514', 'claude-haiku-20250514'],
+          tools: [
+            {
+              name: 'code_analyzer',
+              description: 'Analyze code quality and structure',
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'git-ops',
+          name: 'Git Operations MCP',
+          description: '执行常用 Git 操作的工具集',
+          providers: ['claude'],
+          command: 'node',
+          args: ['./mcp-servers/git-ops/index.js'],
+          env: {
+            GIT_USER_NAME: 'Pack Agents',
+            GIT_USER_EMAIL: 'agents@pack.dev',
+          },
+          status: 'active',
+          tags: ['git', 'operations'],
+          tools: [
+            {
+              name: 'git_operations',
+              description: 'Perform Git operations',
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'project-mgmt',
+          name: 'Project Management MCP',
+          description: '面向项目协同的任务与进度工具',
+          providers: ['claude'],
+          command: 'python',
+          args: ['./mcp-servers/project-mgmt/server.py'],
+          env: {
+            PROJECT_ROOT: process.cwd(),
+          },
+          status: 'active',
+          tags: ['project', 'coordination'],
+          tools: [
+            {
+              name: 'project_manager',
+              description: 'Manage project tasks and status',
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'database-tools',
+          name: 'Database MCP',
+          description: '访问和调试数据库的工具集',
+          providers: ['claude'],
+          command: 'node',
+          args: ['./mcp-servers/database/index.js'],
+          env: {
+            DATABASE_URL: '',
+          },
+          status: 'disabled',
+          tags: ['database'],
+          tools: [
+            {
+              name: 'db_query',
+              description: 'Run database queries and migrations',
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        },
+      ],
+    };
+
     const configs = [
       { file: 'app-config.json', data: appConfig },
       { file: 'llm-providers.json', data: llmProviderConfig },
       { file: 'tools-config.json', data: toolsConfig },
+      { file: 'mcp-servers.json', data: mcpRegistry },
     ];
-
     for (const config of configs) {
       const configPath = path.join(this.configRoot, 'settings', config.file);
       try {
@@ -206,6 +341,17 @@ export class ConfigManager {
   // Agent 操作
   async saveAgent(agent: AgentConfig): Promise<void> {
     agent.metadata.updatedAt = dayjs().toISOString();
+
+    const normalizedMcpIds = Array.isArray(agent.mcpServerIds)
+      ? agent.mcpServerIds.filter((id) => typeof id === 'string' && id.trim().length > 0)
+      : [];
+    agent.mcpServerIds = normalizedMcpIds;
+
+    agent.knowledgeBasePaths = Array.isArray(agent.knowledgeBasePaths)
+      ? agent.knowledgeBasePaths
+          .map((p) => (typeof p === 'string' ? p.trim() : ''))
+          .filter((p) => p.length > 0)
+      : [];
 
     const filePath = path.join(
       this.configRoot,
@@ -237,6 +383,15 @@ export class ConfigManager {
       );
       const content = await fs.readFile(filePath, 'utf-8');
       const agent = JSON.parse(content);
+
+      agent.mcpServerIds = Array.isArray(agent.mcpServerIds)
+        ? agent.mcpServerIds.filter((id) => typeof id === 'string' && id.trim().length > 0)
+        : [];
+      agent.knowledgeBasePaths = Array.isArray(agent.knowledgeBasePaths)
+        ? agent.knowledgeBasePaths
+            .map((p) => (typeof p === 'string' ? p.trim() : ''))
+            .filter((p) => p.length > 0)
+        : [];
 
       // 缓存结果
       this.setCacheEntry(this.agentCache, id, agent);
@@ -321,24 +476,41 @@ export class ConfigManager {
       description: overrides?.description || template.description,
       role: template.role,
       systemPrompt: template.systemPrompt,
-      llmConfig: overrides?.llmConfig || {
-        provider: 'claude',
-        model: '',
-        baseUrl: 'https://api.anthropic.com',
-        apiKey: '',
-        capabilities: {
-          language: true,
-          vision: false,
-          web: false,
-        },
-        parameters: {
-          temperature: 0.1,
-          maxTokens: 4000,
-          topP: 0.9,
-        },
-      },
+      llmConfig: overrides?.llmConfig || {
+
+        provider: 'claude',
+
+        model: '',
+
+        baseUrl: 'https://api.anthropic.com',
+
+        apiKey: '',
+
+        capabilities: {
+
+          language: true,
+
+          vision: false,
+
+          web: false,
+
+        },
+
+        parameters: {
+
+          temperature: 0.1,
+
+          maxTokens: 4000,
+
+          topP: 0.9,
+
+        },
+
+      },
+
       knowledgeBasePaths: overrides?.knowledgeBasePaths || ['./src', './docs'],
       enabledTools: template.enabledTools,
+      mcpServerIds: Array.isArray(overrides?.mcpServerIds) ? overrides.mcpServerIds : [],
       metadata: {
         version: '1.0.0',
         author: 'user',
@@ -526,4 +698,78 @@ export class ConfigManager {
     const content = await fs.readFile(configPath, 'utf-8');
     return JSON.parse(content);
   }
+
+  // MCP 链接操作
+  async listMcpServers(): Promise<MCPServerDefinition[]> {
+    const registry = await this.loadMcpRegistry();
+    return registry.servers.sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+  }
+
+  async getMcpServer(id: string): Promise<MCPServerDefinition | null> {
+    const registry = await this.loadMcpRegistry();
+    return registry.servers.find((server) => server.id === id) || null;
+  }
+
+  async createMcpServer(input: MCPServerInput): Promise<MCPServerDefinition> {
+    const registry = await this.loadMcpRegistry();
+    const now = new Date().toISOString();
+    const server: MCPServerDefinition = {
+      ...input,
+      args: input.args ?? [],
+      env: input.env ?? {},
+      status: input.status ?? 'active',
+      tools: input.tools ?? [],
+      providers: input.providers ?? [],
+      supportedModels: input.supportedModels ?? [],
+      tags: input.tags ?? [],
+      id: nanoid(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    registry.servers.push(server);
+    await this.saveMcpRegistry(registry);
+    return server;
+  }
+
+  async updateMcpServer(id: string, updates: Partial<MCPServerInput>): Promise<MCPServerDefinition | null> {
+    const registry = await this.loadMcpRegistry();
+    const index = registry.servers.findIndex((server) => server.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    const current = registry.servers[index];
+    const entries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    const sanitizedUpdates = Object.fromEntries(entries) as Partial<MCPServerInput>;
+    registry.servers[index] = {
+      ...current,
+      ...sanitizedUpdates,
+      updatedAt: now,
+    };
+
+    await this.saveMcpRegistry(registry);
+    return registry.servers[index];
+  }
+
+  async deleteMcpServer(id: string): Promise<boolean> {
+    const registry = await this.loadMcpRegistry();
+    const nextServers = registry.servers.filter((server) => server.id !== id);
+    if (nextServers.length === registry.servers.length) {
+      return false;
+    }
+
+    registry.servers = nextServers;
+    await this.saveMcpRegistry(registry);
+    return true;
+  }
+
+  async upsertMcpServers(servers: MCPServerDefinition[]): Promise<void> {
+    await this.saveMcpRegistry({ servers });
+  }
+
 }

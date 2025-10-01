@@ -1,5 +1,6 @@
 import { query } from '@anthropic-ai/claude-code';
 import { generateId } from '@/lib/utils';
+import { ConfigManager } from '@/lib/storage/config-manager';
 import { MCPProvider } from '../tools/mcp-provider';
 import { SessionStore } from '../../storage/session-store';
 
@@ -47,6 +48,12 @@ export interface MCPServerConfig {
   args?: string[];
   env?: Record<string, string>;
   timeout?: number;
+  description?: string;
+  tags?: string[];
+  providers?: string[];
+  supportedModels?: string[];
+  status?: 'active' | 'disabled';
+  tools?: Array<{ name: string; description?: string }>;
 }
 
 export interface ExecutionOptions {
@@ -101,10 +108,61 @@ export class ClaudeAgent {
   private sessionId?: string;
   private config: ClaudeAgentConfig;
   private mcpProvider: MCPProvider;
+  private configManager = new ConfigManager();
+  private globalMcpLoaded = false;
 
   constructor(config: ClaudeAgentConfig) {
     this.config = config;
     this.mcpProvider = new MCPProvider(config.claudeConfig.mcpServers);
+  }
+
+  private async ensureGlobalMcpServers(): Promise<void> {
+    if (this.globalMcpLoaded) {
+      return;
+    }
+
+    try {
+      const registry = await this.configManager.listMcpServers();
+      const model = this.config.claudeConfig.model;
+
+      registry
+        .filter((server) => server.status !== 'disabled')
+        .filter((server) => {
+          if (!server.providers || server.providers.length === 0) {
+            return true;
+          }
+          return server.providers.includes('claude');
+        })
+        .filter((server) => {
+          if (!server.supportedModels || server.supportedModels.length === 0) {
+            return true;
+          }
+          return server.supportedModels.includes(model);
+        })
+        .forEach((server) => {
+          if (this.mcpProvider.hasServer(server.id)) {
+            return;
+          }
+
+          this.mcpProvider.registerServer(server.id, {
+            name: server.name,
+            command: server.command,
+            args: server.args || [],
+            env: server.env || {},
+            timeout: server.timeout,
+            description: server.description,
+            tags: server.tags,
+            providers: server.providers,
+            supportedModels: server.supportedModels,
+            status: server.status,
+            tools: server.tools,
+          });
+        });
+
+      this.globalMcpLoaded = true;
+    } catch (error) {
+      console.warn('加载全局 MCP 注册表失败:', error);
+    }
   }
 
   // 核心执行方法 - 直接使用 Claude Code SDK
@@ -114,6 +172,7 @@ export class ClaudeAgent {
   ): Promise<AgentResult> {
     try {
       // 创建或恢复会话
+      await this.ensureGlobalMcpServers();
       const sessionId = await this.getOrCreateSession();
 
       // 使用 Claude Code SDK 的 query 方法
@@ -170,6 +229,7 @@ export class ClaudeAgent {
   async *executeStream(
     prompt: string | AsyncGenerator<any>
   ): AsyncGenerator<AgentMessage> {
+    await this.ensureGlobalMcpServers();
     const sessionId = await this.getOrCreateSession();
 
     for await (const message of query({
@@ -192,6 +252,8 @@ export class ClaudeAgent {
     if (this.sessionId && this.config.sessionConfig.resumable) {
       return this.sessionId;
     }
+
+    await this.ensureGlobalMcpServers();
 
     // 通过初始化查询获取会话ID
     const initResult = query({

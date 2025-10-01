@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Form,
   Input,
@@ -26,7 +27,7 @@ import {
   SettingOutlined,
   RobotOutlined,
 } from '@ant-design/icons';
-import { ClaudeAgentConfig, MCPServerConfig } from '@/lib/types';
+import { ClaudeAgentConfig, MCPServerConfig, MCPServerDefinition, ApiResponse } from '@/lib/types';
 import { generateId } from '@/lib/utils';
 
 const isAbsolutePath = (value: string) => {
@@ -61,6 +62,9 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [mcpServers, setMcpServers] = useState<Array<{ key: string; config: MCPServerConfig }>>([]);
+  const [registryLoading, setRegistryLoading] = useState(false);
+  const [registryOptions, setRegistryOptions] = useState<MCPServerDefinition[]>([]);
+  const [selectedRegistryId, setSelectedRegistryId] = useState<string | undefined>();
   const [knowledgePaths, setKnowledgePaths] = useState<string[]>([]);
   const [envVars, setEnvVars] = useState<Array<{ key: string; value: string }>>([]);
 
@@ -130,6 +134,44 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
   }, [agent, form]);
 
   // 处理表单提交
+      useEffect(() => {
+    let mounted = true;
+
+    const loadRegistry = async () => {
+      try {
+        setRegistryLoading(true);
+        const response = await fetch('/api/mcp');
+        if (!response.ok) {
+          throw new Error('无法加载 MCP 列表');
+        }
+        const result: ApiResponse<MCPServerDefinition[]> = await response.json();
+        if (!result.success) {
+          throw new Error(result.error?.message || '加载 MCP 列表失败');
+        }
+        if (mounted && result.data) {
+          setRegistryOptions(result.data);
+        }
+      } catch (err) {
+        console.error('Load MCP registry failed:', err);
+        if (mounted) {
+          message.warning('无法加载 MCP 注册表，请稍后重试');
+        }
+      } finally {
+        if (mounted) {
+          setRegistryLoading(false);
+        }
+      }
+    };
+
+    loadRegistry();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+
+
   const handleSubmit = async (values: any) => {
     try {
       const normalizedKnowledgePaths = knowledgePaths
@@ -241,6 +283,37 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
     newServers[index] = { key, config };
     setMcpServers(newServers);
   };
+
+  const attachRegistryMcp = useCallback((serverId: string) => {
+    const registry = registryOptions.find((item) => item.id === serverId);
+    if (!registry) {
+      return;
+    }
+
+    if (mcpServers.some((item) => item.key === serverId)) {
+      message.info('该 MCP 已添加');
+      setSelectedRegistryId(undefined);
+      return;
+    }
+
+    const config: MCPServerConfig = {
+      name: registry.name,
+      command: registry.command,
+      args: registry.args || [],
+      env: registry.env || {},
+      timeout: registry.timeout,
+      description: registry.description,
+      tags: registry.tags,
+      providers: registry.providers,
+      supportedModels: registry.supportedModels,
+      status: registry.status,
+      tools: registry.tools,
+    };
+
+    setMcpServers((prev) => [...prev, { key: registry.id, config }]);
+    setSelectedRegistryId(undefined);
+    message.success(`已添加 MCP ${registry.name}`);
+  }, [mcpServers, registryOptions]);
 
   return (
     <div className={`claude-agent-config-form ${className}`}>
@@ -509,16 +582,41 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
             className="mb-4"
           />
 
-          <div className="flex justify-between items-center mb-2">
-            <Text strong>MCP 服务器配置</Text>
-            <Button 
-              type="dashed" 
-              size="small" 
-              icon={<PlusOutlined />}
-              onClick={addMcpServer}
-            >
-              添加服务器
-            </Button>
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-2">
+            <Text strong>MCP 服务配置</Text>
+            <Space size="small" wrap>
+              <Select
+                allowClear
+                placeholder="从注册表快速添加"
+                value={selectedRegistryId}
+                loading={registryLoading}
+                style={{ minWidth: 240 }}
+                options={registryOptions.map((server) => ({
+                  value: server.id,
+                  label: server.name,
+                  disabled: mcpServers.some((item) => item.key === server.id),
+                }))}
+                onChange={(value) => {
+                  if (!value) {
+                    setSelectedRegistryId(undefined);
+                    return;
+                  }
+                  setSelectedRegistryId(value);
+                  attachRegistryMcp(value);
+                }}
+              />
+              <Button type="link" size="small" href="/mcp" target="_blank">
+                管理中心
+              </Button>
+              <Button
+                type="dashed"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={addMcpServer}
+              >
+                添加服务器
+              </Button>
+            </Space>
           </div>
 
           {mcpServers.map((server, index) => (

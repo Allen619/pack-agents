@@ -12,7 +12,8 @@ import {
   PlusOutlined,
   FileTextOutlined,
   MenuOutlined,
-  MenuFoldOutlined
+  MenuFoldOutlined,
+  ApiOutlined
 } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
@@ -86,6 +87,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
       onClick: () => router.push('/executions'),
     },
     {
+      key: 'mcp',
+      icon: <ApiOutlined />,
+      label: 'MCP 服务',
+      onClick: () => router.push('/mcp'),
+    },
+    {
       key: 'settings',
       icon: <SettingOutlined />,
       label: '系统设置',
@@ -112,6 +119,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       return ['workflows'];
     }
     if (pathname.startsWith('/executions')) return ['executions'];
+    if (pathname.startsWith('/mcp')) return ['mcp'];
     if (pathname.startsWith('/settings')) return ['settings'];
     return [];
   };

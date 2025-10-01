@@ -105,6 +105,10 @@ export class MCPProvider {
     this.configs.set(name, config);
   }
 
+  hasServer(name: string): boolean {
+    return this.configs.has(name);
+  }
+
   /**
    * 初始化所有MCP服务器
    */

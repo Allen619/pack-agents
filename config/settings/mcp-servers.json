@@ -1,0 +1,23 @@
+{
+  "servers": [
+    {
+      "name": "playwright",
+      "description": "playwright",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "env": {},
+      "tags": [],
+      "providers": [],
+      "supportedModels": [],
+      "status": "active",
+      "timeout": 300000,
+      "tools": [],
+      "id": "_l1MsIHmCJAOEsvLS1G1d",
+      "createdAt": "2025-10-01T02:26:43.890Z",
+      "updatedAt": "2025-10-01T02:26:43.890Z"
+    }
+  ]
+}

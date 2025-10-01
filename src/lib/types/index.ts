@@ -60,8 +60,6 @@ export interface LLMConfig {
     [key: string]: any;
   };
 }
-  parameters: {
-}
 
 export interface AgentConfig {
   id: string;
@@ -72,6 +70,7 @@ export interface AgentConfig {
   llmConfig: LLMConfig;
   knowledgeBasePaths: string[];
   enabledTools: string[];
+  mcpServerIds: string[];
   metadata: {
     version: string;
     author: string;
@@ -87,13 +86,36 @@ export interface AgentConfig {
 }
 
 // MCP 相关类型
+export type MCPServerStatus = 'active' | 'disabled';
+
 export interface MCPServerConfig {
   name: string;
   command: string;
   args?: string[];
   env?: Record<string, string>;
   timeout?: number;
+  description?: string;
+  tags?: string[];
+  providers?: string[];
+  supportedModels?: string[];
+  status?: MCPServerStatus;
+  tools?: Array<{
+    name: string;
+    description?: string;
+  }>;
 }
+
+export interface MCPServerDefinition extends MCPServerConfig {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MCPRegistryConfig {
+  servers: MCPServerDefinition[];
+}
+
+export type MCPServerInput = Omit<MCPServerDefinition, 'id' | 'createdAt' | 'updatedAt'>;
 
 export interface MCPTool {
   name: string;
