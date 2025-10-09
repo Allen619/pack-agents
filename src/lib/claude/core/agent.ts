@@ -1,18 +1,20 @@
 import { query } from '@anthropic-ai/claude-code';
 import { generateId } from '@/lib/utils';
+import { ConfigManager } from '@/lib/storage/config-manager';
 import { MCPProvider } from '../tools/mcp-provider';
 import { SessionStore } from '../../storage/session-store';
+import { ClaudeQueryEngine } from './query';
 
 export interface ClaudeAgentConfig {
   id: string;
   name: string;
   description: string;
   role: 'main' | 'sub' | 'synthesis';
+  systemPrompt: string; // 修复：将systemPrompt移到根级别，与实际配置文件结构匹配
 
   // Claude Code SDK 核心配置
   claudeConfig: {
     model: 'claude-sonnet-4-20250514' | 'claude-haiku-20250514';
-    systemPrompt: string;
     allowedTools: Array<'Read' | 'Edit' | 'Write' | 'Glob' | 'Grep' | 'Bash'>;
     mcpServers?: Record<string, MCPServerConfig>;
     maxTurns: number;
@@ -47,6 +49,12 @@ export interface MCPServerConfig {
   args?: string[];
   env?: Record<string, string>;
   timeout?: number;
+  description?: string;
+  tags?: string[];
+  providers?: string[];
+  supportedModels?: string[];
+  status?: 'active' | 'disabled';
+  tools?: Array<{ name: string; description?: string }>;
 }
 
 export interface ExecutionOptions {
@@ -101,10 +109,63 @@ export class ClaudeAgent {
   private sessionId?: string;
   private config: ClaudeAgentConfig;
   private mcpProvider: MCPProvider;
+  private configManager = new ConfigManager();
+  private globalMcpLoaded = false;
+  private queryEngine: ClaudeQueryEngine;
 
   constructor(config: ClaudeAgentConfig) {
     this.config = config;
     this.mcpProvider = new MCPProvider(config.claudeConfig.mcpServers);
+    this.queryEngine = new ClaudeQueryEngine();
+  }
+
+  private async ensureGlobalMcpServers(): Promise<void> {
+    if (this.globalMcpLoaded) {
+      return;
+    }
+
+    try {
+      const registry = await this.configManager.listMcpServers();
+      const model = this.config.claudeConfig.model;
+
+      registry
+        .filter((server) => server.status !== 'disabled')
+        .filter((server) => {
+          if (!server.providers || server.providers.length === 0) {
+            return true;
+          }
+          return server.providers.includes('claude');
+        })
+        .filter((server) => {
+          if (!server.supportedModels || server.supportedModels.length === 0) {
+            return true;
+          }
+          return server.supportedModels.includes(model);
+        })
+        .forEach((server) => {
+          if (this.mcpProvider.hasServer(server.id)) {
+            return;
+          }
+
+          this.mcpProvider.registerServer(server.id, {
+            name: server.name,
+            command: server.command,
+            args: server.args || [],
+            env: server.env || {},
+            timeout: server.timeout,
+            description: server.description,
+            tags: server.tags,
+            providers: server.providers,
+            supportedModels: server.supportedModels,
+            status: server.status,
+            tools: server.tools,
+          });
+        });
+
+      this.globalMcpLoaded = true;
+    } catch (error) {
+      console.warn('加载全局 MCP 注册表失败:', error);
+    }
   }
 
   // 核心执行方法 - 直接使用 Claude Code SDK
@@ -114,20 +175,23 @@ export class ClaudeAgent {
   ): Promise<AgentResult> {
     try {
       // 创建或恢复会话
+      await this.ensureGlobalMcpServers();
       const sessionId = await this.getOrCreateSession();
 
       // 使用 Claude Code SDK 的 query 方法
       const results: any[] = [];
       const startTime = Date.now();
 
+      // 构建查询选项 - 使用我们改进的 buildQueryOptions 方法
+      const baseOptions = await this.queryEngine.buildQueryOptions(this.config);
+
+      console.log('Agent.execute() - Built query options:', JSON.stringify(baseOptions, null, 2));
+
       for await (const message of query({
         prompt,
         options: {
-          model: this.config.claudeConfig.model,
-          allowedTools: this.config.claudeConfig.allowedTools,
-          maxTurns: this.config.claudeConfig.maxTurns,
+          ...baseOptions,
           resume: sessionId,
-          mcpServers: this.mcpProvider.getConfig(),
         },
       })) {
         if (message.type === 'result') {
@@ -170,16 +234,19 @@ export class ClaudeAgent {
   async *executeStream(
     prompt: string | AsyncGenerator<any>
   ): AsyncGenerator<AgentMessage> {
+    await this.ensureGlobalMcpServers();
     const sessionId = await this.getOrCreateSession();
+
+    // 构建查询选项 - 使用我们改进的 buildQueryOptions 方法
+    const baseOptions = await this.queryEngine.buildQueryOptions(this.config);
+
+    console.log('Agent.executeStream() - Built query options:', JSON.stringify(baseOptions, null, 2));
 
     for await (const message of query({
       prompt,
       options: {
-        model: this.config.claudeConfig.model,
-        allowedTools: this.config.claudeConfig.allowedTools,
-        maxTurns: this.config.claudeConfig.maxTurns,
+        ...baseOptions,
         resume: sessionId,
-        mcpServers: this.mcpProvider.getConfig(),
       },
     })) {
       // 转换 Claude Code SDK 消息为 Agent 消息格式
@@ -192,6 +259,8 @@ export class ClaudeAgent {
     if (this.sessionId && this.config.sessionConfig.resumable) {
       return this.sessionId;
     }
+
+    await this.ensureGlobalMcpServers();
 
     // 通过初始化查询获取会话ID
     const initResult = query({

@@ -1,6 +1,13 @@
 import { query as claudeQuery } from '@anthropic-ai/claude-code';
-import { ClaudeAgentConfig, ExecutionOptions, AgentResult } from '@/lib/types';
-import { generateId } from '@/lib/utils';
+import {
+  ClaudeAgentConfig,
+  ExecutionOptions,
+  AgentResult,
+  MCPServerConfig,
+  MCPServerDefinition,
+} from '../../../lib/types';
+import { ConfigManager } from '../../../lib/storage/config-manager';
+import { generateId } from '../../../lib/utils';
 
 export interface QueryRequest {
   prompt: string | AsyncGenerator<any>;
@@ -37,6 +44,7 @@ export interface PromptOptimizationOptions {
  * 提供统一的查询接口和优化功能
  */
 export class ClaudeQueryEngine {
+  private configManager = new ConfigManager();
   private cache: Map<string, QueryResult> = new Map();
   private readonly cacheTTL = 5 * 60 * 1000; // 5分钟缓存
 
@@ -58,7 +66,7 @@ export class ClaudeQueryEngine {
       }
 
       // 构建Claude Code SDK查询选项
-      const queryOptions = this.buildQueryOptions(request.config);
+      const queryOptions = await this.buildQueryOptions(request.config);
 
       // 执行查询
       for await (const message of claudeQuery({
@@ -132,7 +140,7 @@ export class ClaudeQueryEngine {
    */
   async *executeStream(request: QueryRequest): AsyncGenerator<any> {
     try {
-      const queryOptions = this.buildQueryOptions(request.config);
+      const queryOptions = await this.buildQueryOptions(request.config);
 
       for await (const message of claudeQuery({
         prompt: request.prompt,
@@ -159,19 +167,138 @@ export class ClaudeQueryEngine {
   }
 
   /**
+   * 将MCPServerConfig转换为SDK格式 (McpStdioServerConfig)
+   */
+  private convertToSdkMcpConfig(server: MCPServerDefinition): any {
+    return {
+      type: 'stdio',
+      command: server.command,
+      args: server.args || [],
+      env: server.env || {},
+    };
+  }
+
+  /**
+   * 构建 Claude Code SDK 所需的 MCP 服务器配置
+   */
+  public buildMcpServersConfig(): Record<string, any> {
+    // 构建 MCP 服务器配置 - SDK 格式和标准一致
+    const mergedMcp: Record<string, any> = {};
+
+    // 优先使用 ClaudeAgentConfig 中的配置 (如果有的话)
+    // 然后从注册表中获取全局配置
+    this.getGlobalMcpServers().forEach((server) => {
+      if (server.status !== 'disabled') {
+        mergedMcp[server.name] = this.convertToSdkMcpConfig(server);
+      }
+    });
+
+    console.log(
+      'Built MCP servers config for SDK:',
+      JSON.stringify(mergedMcp, null, 2)
+    );
+    return Object.keys(mergedMcp).length > 0 ? mergedMcp : undefined;
+  }
+
+  private async getGlobalMcpServers(): Promise<MCPServerDefinition[]> {
+    try {
+      const registry = await this.configManager.listMcpServers();
+      return registry.filter((server) => server.status !== 'disabled');
+    } catch (error) {
+      console.warn('加载 MCP 注册表失败:', error);
+      return [];
+    }
+  }
+
+  /**
    * 构建Claude Code SDK查询选项
    */
-  private buildQueryOptions(config: ClaudeAgentConfig): any {
-    return {
+  public async buildQueryOptions(config: ClaudeAgentConfig): Promise<any> {
+    console.log('=== buildQueryOptions 开始构建查询选项 ===');
+    console.log('1. 输入的 ClaudeAgentConfig:', {
+      id: config.id,
+      name: config.name,
+      systemPrompt: config.systemPrompt, // 修复：从根级别获取系统提示词
+      model: config.claudeConfig.model,
+      allowedTools: config.claudeConfig.allowedTools,
+      knowledgeBasePaths: config.context.knowledgeBasePaths,
+      workingDirectory: config.context.workingDirectory,
+    });
+
+    // 构建 MCP 服务器配置
+    const mergedMcp: Record<string, any> = {};
+
+    try {
+      console.log('2. 开始加载 MCP 服务器注册表...');
+      const registry = await this.configManager.listMcpServers();
+      console.log(
+        '3. 获取到的 MCP 服务器注册表:',
+        JSON.stringify(registry, null, 2)
+      );
+
+      const model = config.claudeConfig.model;
+      console.log('4. 当前使用的模型:', model);
+
+      const filteredServers = registry
+        .filter((server) => server.status !== 'disabled')
+        .filter((server) => {
+          if (!server.providers || server.providers.length === 0) {
+            return true;
+          }
+          return server.providers.includes('claude');
+        })
+        .filter((server) => {
+          if (!server.supportedModels || server.supportedModels.length === 0) {
+            return true;
+          }
+          return server.supportedModels.includes(model);
+        });
+
+      console.log(
+        '5. 过滤后的 MCP 服务器:',
+        JSON.stringify(filteredServers, null, 2)
+      );
+
+      filteredServers.forEach((server) => {
+        console.log(`6. 添加 MCP 服务器: ${server.name}`);
+        // 使用服务器名称作为 key，按照用户要求的格式
+        mergedMcp[server.name] = {
+          type: 'stdio',
+          command: server.command,
+          args: server.args || [],
+          env: server.env || {},
+        };
+      });
+    } catch (error) {
+      console.warn('加载 MCP 注册表失败:', error);
+    }
+
+    console.log(
+      '7. 最终合并的 MCP 服务器配置:',
+      JSON.stringify(mergedMcp, null, 2)
+    );
+
+    const queryOptions = {
       model: config.claudeConfig.model,
       allowedTools: config.claudeConfig.allowedTools,
       maxTurns: config.claudeConfig.maxTurns,
       temperature: config.claudeConfig.temperature,
-      mcpServers: config.claudeConfig.mcpServers,
-      systemPrompt: config.claudeConfig.systemPrompt,
+      mcpServers: Object.keys(mergedMcp).length > 0 ? mergedMcp : undefined,
+      customSystemPrompt: config.systemPrompt, // 修复：从根级别获取系统提示词，而不是从claudeConfig对象内
       workingDirectory: config.context.workingDirectory,
       environmentVariables: config.context.environmentVariables,
+      permissionMode: 'bypassPermissions', // 允许所有工具（包括MCP工具）直接执行
     };
+
+    console.log('8. 完整的查询选项:', JSON.stringify(queryOptions, null, 2));
+    console.log('8.1. 系统提示词详情:', {
+      configSystemPrompt: config.systemPrompt, // 修复：显示正确的系统提示词字段
+      hasSystemPrompt: !!config.systemPrompt,
+      systemPromptLength: config.systemPrompt?.length || 0
+    });
+    console.log('=== buildQueryOptions 完成构建查询选项 ===');
+
+    return queryOptions;
   }
 
   /**

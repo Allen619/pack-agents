@@ -41,6 +41,11 @@ const PERMISSION_MODE_OPTIONS: Array<{
   description: string;
 }> = [
   {
+    value: 'bypassPermissions',
+    label: 'bypassPermissions（绕过所有权限）',
+    description: '自动执行所有工具操作，包括文件编辑、Bash命令和MCP工具，无需手动确认。',
+  },
+  {
     value: 'acceptEdits',
     label: 'acceptEdits（自动接受编辑）',
     description: '自动接受常规文件编辑操作，仍会对潜在风险请求确认。',
@@ -49,11 +54,6 @@ const PERMISSION_MODE_OPTIONS: Array<{
     value: 'default',
     label: 'default（逐项确认）',
     description: '每次工具调用都需人工确认，适合严格审核或演示场景。',
-  },
-  {
-    value: 'bypassPermissions',
-    label: 'bypassPermissions（跳过权限）',
-    description: '直接执行所有启用的工具，仅在高度受控环境中使用。',
   },
   {
     value: 'plan',
@@ -148,7 +148,7 @@ const renderMarkdown = (content: string, onCopy?: (text: string) => void) => {
 
   return (
     <div
-      className="max-w-none prose prose-sm"
+      className="prose-sm prose max-w-none"
       onCopy={(e) => {
         if (onCopy) {
           onCopy(window.getSelection()?.toString() || '');
@@ -224,8 +224,8 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
   const [isThinking, setIsThinking] = useState(false);
   const [shouldClearContext, setShouldClearContext] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>('acceptEdits');
   const [thoughtDepth, setThoughtDepth] = useState<ThoughtDepth>('ultrathink');
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('bypassPermissions');
   const activeRequest = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const streamingBufferRef = useRef<StreamingFrameBuffer>({ messageId: null, pending: '', rafId: null });
@@ -250,8 +250,8 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     setMessages([buildWelcomeMessage(agent)]);
     setInputValue('');
     setIsThinking(false);
-    setPermissionMode('acceptEdits');
     setThoughtDepth('ultrathink');
+    setPermissionMode('bypassPermissions');
     if (activeRequest.current) {
       activeRequest.current.abort();
       activeRequest.current = null;
@@ -588,9 +588,9 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     <div className="flex flex-col h-full bg-gray-50">
       {/* 头部信息 */}
       <div className="p-4 bg-white border-b">
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-3">
-            <div className="flex justify-center items-center w-10 h-10 bg-blue-500 rounded-full">
+            <div className="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full">
               <RobotOutlined className="text-lg text-white" />
             </div>
             <div>
@@ -660,9 +660,9 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       {/* 聊天区域 */}
       <div className="flex flex-col flex-1">
         {/* 消息列表 */}
-        <div ref={scrollContainerRef} className="overflow-y-auto flex-1 p-4">
+        <div ref={scrollContainerRef} className="flex-1 p-4 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="flex justify-center items-center h-full">
+            <div className="flex items-center justify-center h-full">
               <Welcome
                 title="开始对话"
                 description={`与 ${agent.name} 开始智能对话`}
@@ -760,7 +760,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
             loading={isThinking}
             prefix={
               <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
-                <UserOutlined className="text-white text-sm" />
+                <UserOutlined className="text-sm text-white" />
               </div>
             }
             actions={[
@@ -777,7 +777,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
             ]}
           />
 
-          <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+          <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
             <span>已启用工具: {agent.enabledTools?.length ? agent.enabledTools.join(', ') : '无'}</span>
             {isThinking && (
               <span className="flex items-center text-blue-500">

@@ -35,6 +35,7 @@ export default defineConfig({
           collapsed: false,
           items: [
             { text: 'Agent 工厂', link: '/user/core-features/agent-factory' },
+            { text: 'Agent 聊天', link: '/user/core-features/agent-chat' },
             { text: '工作流编排', link: '/user/core-features/workflow-orchestration' },
             { text: '实用案例', link: '/user/core-features/use-cases' },
           ],
@@ -57,8 +58,9 @@ export default defineConfig({
           text: '参考资料',
           collapsed: false,
           items: [
-            { text: '术语表', link: '/user/reference/glossary' },
+            { text: '术语', link: '/user/reference/glossary' },
             { text: 'API 参考', link: '/user/reference/api-reference' },
+            { text: 'LLM 配置', link: '/user/reference/llm-config' },
             { text: '更新日志', link: '/user/reference/changelog' },
           ],
         },
@@ -154,3 +156,4 @@ export default defineConfig({
     outDir: '../dist-docs',
   },
 });
+

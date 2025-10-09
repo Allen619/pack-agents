@@ -42,6 +42,10 @@ export class ConfigValidator {
           type: 'array',
           items: { type: 'string' },
         },
+        mcpServerIds: {
+          type: 'array',
+          items: { type: 'string' },
+        },
         enabledTools: {
           type: 'array',
           items: { type: 'string' },

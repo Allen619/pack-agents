@@ -11,6 +11,7 @@ import {
   message,
   Row,
   Col,
+  Tag,
 } from 'antd';
 import {
   PlusOutlined,
@@ -18,7 +19,7 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
 } from '@ant-design/icons';
-import { AgentConfig, LLMConfig } from '@/types';
+import { AgentConfig, LLMConfig, MCPServerDefinition } from '@/types';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -31,6 +32,12 @@ interface AgentConfigFormProps {
 }
 
 const MASKED_API_KEY = '********';
+
+const isAbsolutePath = (value: string) => {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return /^(?:[a-zA-Z]:\\|\\\\|\/)/.test(trimmed);
+};
 
 const DEFAULT_LLM_CONFIG: LLMConfig = {
   provider: 'others',
@@ -70,6 +77,8 @@ export function AgentConfigForm({
 }: AgentConfigFormProps) {
   const [form] = Form.useForm();
   const [showApiKey, setShowApiKey] = useState(false);
+  const [mcpOptions, setMcpOptions] = useState<MCPServerDefinition[]>([]);
+  const [mcpLoading, setMcpLoading] = useState(false);
 
   // 获取显示用的 API Key 值
   const getDisplayApiKey = (apiKey?: string) => {
@@ -120,6 +129,60 @@ export function AgentConfigForm({
     }
   }, [agent, form]);
 
+  useEffect(() => {
+
+    const loadMcpOptions = async () => {
+
+      try {
+
+        setMcpLoading(true);
+
+        const response = await fetch('/api/mcp');
+
+        if (!response.ok) {
+
+          throw new Error('无法获取 MCP 列表');
+
+        }
+
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.data?.servers)) {
+
+          setMcpOptions(result.data.servers);
+
+        } else if (result.success && Array.isArray(result.data)) {
+
+          setMcpOptions(result.data);
+
+        } else {
+
+          setMcpOptions(result.data?.servers || []);
+
+        }
+
+      } catch (err) {
+
+        console.error('Load MCP options failed:', err);
+
+        message.warning('无法加载 MCP 服务列表');
+
+      } finally {
+
+        setMcpLoading(false);
+
+      }
+
+    };
+
+
+
+    loadMcpOptions();
+
+  }, []);
+
+
+
   const handleSubmit = async (values: any) => {
     try {
       const llmConfig = values.llmConfig || {};
@@ -143,6 +206,19 @@ export function AgentConfigForm({
         web: capabilitySelections.includes('web'),
       };
 
+      const rawKnowledgePath =
+        typeof values.knowledgeBasePaths === 'string'
+          ? values.knowledgeBasePaths.trim()
+          : '';
+      if (!rawKnowledgePath) {
+        message.error('请填写知识库路径');
+        return;
+      }
+      if (!isAbsolutePath(rawKnowledgePath)) {
+        message.error('知识库路径必须为绝对路径');
+        return;
+      }
+
       const submitData = {
         ...values,
         llmConfig: {
@@ -153,8 +229,9 @@ export function AgentConfigForm({
           capabilities,
           parameters: llmConfig.parameters || {},
         },
-        knowledgeBasePaths: values.knowledgeBasePaths ? [values.knowledgeBasePaths].filter(Boolean) : [],
+        knowledgeBasePaths: [rawKnowledgePath],
         enabledTools: values.enabledTools || [],
+        mcpServerIds: Array.isArray(values.mcpServerIds) ? values.mcpServerIds : [],
         metadata: {
           ...values.metadata,
           tags: values.metadata?.tags || [],
@@ -163,6 +240,7 @@ export function AgentConfigForm({
 
       await onSubmit(submitData);
     } catch (error) {
+      console.error('提交失败，请稍后重试', error);
       message.error('提交失败，请稍后重试');
     }
   };
@@ -174,7 +252,7 @@ export function AgentConfigForm({
       onFinish={handleSubmit}
       className="agent-config-form"
     >
-      <Row gutter={24}>
+      <Row gutter={48}>
         <Col span={24}>
           <Card title="基本信息" className="mb-6">
             <Row gutter={16}>
@@ -227,7 +305,7 @@ export function AgentConfigForm({
         </Col>
 
         <Col span={24}>
-          <Card title="LLM 配置" className="mb-6">
+          <Card className="mb-6" title="LLM 配置" >
             <Row gutter={16}>
               <Col span={12}>
                 <Form.Item
@@ -296,7 +374,7 @@ export function AgentConfigForm({
         </Col>
 
         <Col span={12}>
-          <Card title="工具配置" className="mb-6">
+          <Card className="mb-6" title="工具配置" >
             <Form.Item
               name="enabledTools"
               label="启用的工具"
@@ -313,17 +391,43 @@ export function AgentConfigForm({
                 ))}
               </Select>
             </Form.Item>
+            <Form.Item
+              name="mcpServerIds"
+              label="关联 MCP 服务"
+              extra="所选服务会同步写入知识库路径下的 .mcp.json"
+            >
+              <Select
+                mode="multiple"
+                placeholder="选择需要挂载的 MCP 服务"
+                style={{ width: '100%' }}
+                loading={mcpLoading}
+                optionFilterProp="children"
+              >
+                {mcpOptions.map((server) => (
+                  <Option
+                    key={server.id}
+                    value={server.id}
+                    disabled={server.status === 'disabled'}
+                  >
+                    <Space size={4}>
+                      <span>{server.name}</span>
+                      {server.status === 'disabled' && <Tag color="default">停用</Tag>}
+                    </Space>
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
           </Card>
         </Col>
 
         <Col span={12}>
-          <Card title="知识库配置" className="mb-6">
+          <Card className="mb-6" title="知识库配置" >
             <Form.Item
               name="knowledgeBasePaths"
               label="知识库路径"
-              rules={[{ required: false, message: '请输入路径' }]}
+              rules={[{ required: true, message: '请填写知识库路径' }]}
             >
-              <Input placeholder="例如: ./src" />
+              <Input placeholder="例如 C\\data\\knowledge 或 /data/knowledge" />
             </Form.Item>
           </Card>
         </Col>

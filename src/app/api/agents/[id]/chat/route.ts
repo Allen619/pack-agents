@@ -6,6 +6,7 @@ import {
 } from '@anthropic-ai/claude-code';
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import { ConfigManager } from '@/lib/storage/config-manager';
 
 async function loadAgent(agentId: string) {
   const agentPath = path.join(
@@ -82,6 +83,31 @@ async function getAppConfig() {
   }
 }
 
+async function getMcpServersConfig() {
+  const configManager = new ConfigManager();
+  try {
+    const registry = await configManager.listMcpServers();
+    const mcpServers: Record<string, any> = {};
+
+    registry
+      .filter((server) => server.status !== 'disabled')
+      .forEach((server) => {
+        mcpServers[server.name] = {
+          type: 'stdio',
+          command: server.command,
+          args: server.args || [],
+          env: server.env || {},
+        };
+      });
+
+    console.log('Loaded MCP servers config for chat API:', JSON.stringify(mcpServers, null, 2));
+    return mcpServers;
+  } catch (error) {
+    console.warn('Failed to load MCP servers:', error);
+    return {};
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -123,13 +149,21 @@ export async function POST(
 
     const llmConfig = await getLLMConfig();
     const appConfig = await getAppConfig();
+    const mcpServers = await getMcpServersConfig();
 
-    const baseUrl =
-      agent.llmConfig?.baseUrl || 'https://api-inference.modelscope.cn';
-    const apiKey =
-      agent.llmConfig?.apiKey || 'ms-defc617b-6145-4153-98f9-f93f3d224803';
-    const model =
-      agent.llmConfig?.model || 'Qwen/Qwen3-Coder-480B-A35B-Instruct';
+    const baseUrl = agent.llmConfig?.baseUrl;
+    const apiKey = agent.llmConfig?.apiKey;
+    const model = agent.llmConfig?.model;
+
+    if (!baseUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '未找到 baseUrl，请先在配置中设置' },
+        },
+        { status: 400 }
+      );
+    }
 
     if (!apiKey) {
       return NextResponse.json(
@@ -177,7 +211,8 @@ export async function POST(
         const options: Options = {
           model,
           maxTurns: body.options?.maxTurns ?? 6,
-          permissionMode: body.options?.permissionMode ?? 'acceptEdits',
+          permissionMode: body.options?.permissionMode ?? 'bypassPermissions',
+          mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined,
           env: {
             ANTHROPIC_BASE_URL: baseUrl,
             ANTHROPIC_AUTH_TOKEN: apiKey,
@@ -202,7 +237,27 @@ export async function POST(
           options.continue = body.options.continue;
         }
 
-        console.log('Starting query with options:', { options, promptLength: userPrompt.length });
+        // 添加系统提示词 - 关键修复！使用 customSystemPrompt 而不是 systemPrompt
+        // 注意：agent配置文件中systemPrompt在根级别，而不是在claudeConfig对象内
+        if (agent.systemPrompt && agent.systemPrompt.trim()) {
+          console.log('正在配置系统提示词:', {
+            systemPromptLength: agent.systemPrompt.length,
+            systemPromptPreview: agent.systemPrompt.substring(0, 200) + (agent.systemPrompt.length > 200 ? '...' : '')
+          });
+          options.customSystemPrompt = agent.systemPrompt;
+        } else {
+          console.log('警告：Agent 没有系统提示词配置');
+        }
+
+        console.log('Starting query with options:', {
+          model: options.model,
+          maxTurns: options.maxTurns,
+          permissionMode: options.permissionMode,
+          mcpServers: options.mcpServers,
+          cwd: options.cwd,
+          hasCustomSystemPrompt: !!options.customSystemPrompt,
+          promptLength: userPrompt.length
+        });
 
         try {
           // 使用单消息输入模式，避免AsyncGenerator类型问题

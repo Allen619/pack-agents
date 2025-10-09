@@ -10,9 +10,12 @@ import {
 } from '@ant-design/icons';
 import { AgentConfig } from '@/types';
 import { formatDate, getAgentRoleColor } from '@/utils';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useEffect, useState } from 'react';
 
 const { Text, Paragraph } = Typography;
+
+let mcpServerNameCache: Record<string, string> | null = null;
+let mcpServerNamePromise: Promise<Record<string, string>> | null = null;
 
 interface AgentCardProps {
   agent: AgentConfig;
@@ -22,13 +25,88 @@ interface AgentCardProps {
   loading?: boolean;
 }
 
-export function AgentCard({ 
-  agent, 
-  onEdit, 
-  onDelete, 
-  onChat, 
-  loading = false 
+export function AgentCard({
+  agent,
+  onEdit,
+  onDelete,
+  onChat,
+  loading = false,
 }: AgentCardProps) {
+  const [mcpNameMap, setMcpNameMap] = useState<Record<string, string>>({});
+  const [mcpNamesLoading, setMcpNamesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!Array.isArray(agent.mcpServerIds) || agent.mcpServerIds.length === 0) {
+      setMcpNameMap({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        setMcpNamesLoading(true);
+
+        if (!mcpServerNameCache) {
+          if (!mcpServerNamePromise) {
+            mcpServerNamePromise = fetch('/api/mcp')
+              .then(async (res) => {
+                if (!res.ok) {
+                  throw new Error(`Failed to load MCP registry: ${res.status}`);
+                }
+                const payload = await res.json();
+                const servers = Array.isArray(payload.data)
+                  ? payload.data
+                  : Array.isArray(payload.data?.servers)
+                    ? payload.data.servers
+                    : [];
+                const map: Record<string, string> = {};
+                servers.forEach((server: any) => {
+                  if (server && server.id) {
+                    map[String(server.id)] = server.name || server.id;
+                  }
+                });
+                return map;
+              })
+              .catch((error) => {
+                console.error('Failed to load MCP servers:', error);
+                return {};
+              });
+          }
+
+          mcpServerNameCache = await mcpServerNamePromise;
+        }
+
+        if (!cancelled && mcpServerNameCache) {
+          setMcpNameMap(mcpServerNameCache);
+        }
+      } finally {
+        if (!cancelled) {
+          setMcpNamesLoading(false);
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [agent.mcpServerIds]);
+
+  const mcpDisplayNames = useMemo(() => {
+    if (!Array.isArray(agent.mcpServerIds) || agent.mcpServerIds.length === 0) {
+      return [] as string[];
+    }
+
+    const combinedMap: Record<string, string> = {
+      ...(mcpServerNameCache || {}),
+      ...mcpNameMap,
+    };
+
+    return agent.mcpServerIds.map((id) => combinedMap[id] || id);
+  }, [agent.mcpServerIds, mcpNameMap]);
+
   const handleDelete = async () => {
     if (onDelete) {
       try {
@@ -169,6 +247,29 @@ export function AgentCard({
                 )}
               </div>
             </div>
+          )}
+
+          {mcpDisplayNames.length > 0 && (
+            <div>
+              <Text type="secondary" className="text-xs block mb-1">
+                MCP 服务 ({mcpDisplayNames.length}):
+              </Text>
+              <div className="flex flex-wrap gap-1">
+                {agent.mcpServerIds?.slice(0, 3).map((serverId, index) => (
+                  <Tag key={serverId} size="small">
+                    {mcpDisplayNames[index] || serverId}
+                  </Tag>
+                ))}
+                {mcpDisplayNames.length > 3 && (
+                  <Tag size="small" color="default">
+                    +{mcpDisplayNames.length - 3}
+                  </Tag>
+                )}
+              </div>
+            </div>
+          )}
+          {mcpNamesLoading && (
+            <Text type="secondary" className="text-xs block">正在加载 MCP 服务...</Text>
           )}
 
           {agent.knowledgeBasePaths.length > 0 && (

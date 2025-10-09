@@ -95,17 +95,34 @@
   * {
     @apply border-gray-200;
   }
-  
+
   html, body {
     height: 100%;
     margin: 0;
     padding: 0;
   }
-  
+
   body {
     @apply bg-white text-gray-900;
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow: hidden; /* 防止全局滚动条 */
+  }
+
+  /* 添加缺失的间距工具类 */
+  .mb-6 {
+    margin-bottom: 1.5rem;
+  }
+
+  .mb-4 {
+    margin-bottom: 1rem;
+  }
+
+  .mb-3 {
+    margin-bottom: 0.75rem;
+  }
+
+  .mb-2 {
+    margin-bottom: 0.5rem;
   }
   
   #__next {
