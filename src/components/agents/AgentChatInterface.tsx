@@ -33,6 +33,8 @@ const DEFAULT_MAX_TURNS = 6;
 
 type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan';
 
+type ThoughtDepth = 'think' | 'think hard' | 'think harder' | 'ultrathink';
+
 const PERMISSION_MODE_OPTIONS: Array<{
   value: PermissionMode;
   label: string;
@@ -59,6 +61,35 @@ const PERMISSION_MODE_OPTIONS: Array<{
     description: '仅输出操作计划，不会实际落地改动，适合先评估方案。',
   },
 ];
+
+const THOUGHT_DEPTH_OPTIONS: Array<{
+  value: ThoughtDepth;
+  label: string;
+}> = [
+  {
+    value: 'think',
+    label: '浅想',
+  },
+  {
+    value: 'think hard',
+    label: '深思',
+  },
+  {
+    value: 'think harder',
+    label: '再深思',
+  },
+  {
+    value: 'ultrathink',
+    label: '极限思考',
+  },
+];
+
+type StreamingFrameBuffer = {
+  messageId: string | null;
+  pending: string;
+  rafId: number | null;
+};
+
 
 
 // 复制到剪贴板函数
@@ -117,7 +148,7 @@ const renderMarkdown = (content: string, onCopy?: (text: string) => void) => {
 
   return (
     <div
-      className="max-w-none prose prose-sm"
+      className="prose-sm prose max-w-none"
       onCopy={(e) => {
         if (onCopy) {
           onCopy(window.getSelection()?.toString() || '');
@@ -140,6 +171,7 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  displayContent?: string;
   timestamp: Date;
   streaming?: boolean;
   error?: string;
@@ -192,9 +224,11 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
   const [isThinking, setIsThinking] = useState(false);
   const [shouldClearContext, setShouldClearContext] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [thoughtDepth, setThoughtDepth] = useState<ThoughtDepth>('ultrathink');
   const [permissionMode, setPermissionMode] = useState<PermissionMode>('bypassPermissions');
   const activeRequest = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const streamingBufferRef = useRef<StreamingFrameBuffer>({ messageId: null, pending: '', rafId: null });
 
   // 处理代码块复制事件
   useEffect(() => {
@@ -216,6 +250,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     setMessages([buildWelcomeMessage(agent)]);
     setInputValue('');
     setIsThinking(false);
+    setThoughtDepth('ultrathink');
     setPermissionMode('bypassPermissions');
     if (activeRequest.current) {
       activeRequest.current.abort();
@@ -292,11 +327,13 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
 
   const renderMessageWithCopy = useCallback(
     (message: ChatMessage) => {
+      const displayContent = message.displayContent ?? message.content;
+
       const contentNode = message.role === 'assistant'
-        ? renderMarkdown(message.content, (text) => copyToClipboard(text, message.id))
+        ? renderMarkdown(displayContent, (text) => copyToClipboard(text, message.id))
         : (
-          <div className="whitespace-pre-wrap break-words text-sm text-gray-800">
-            {message.content || '...'}
+          <div className="text-sm text-gray-800 break-words whitespace-pre-wrap">
+            {displayContent || '...'}
           </div>
         );
 
@@ -308,7 +345,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
               size="small"
               type="text"
               icon={<CopyOutlined />}
-              onClick={() => copyToClipboard(message.content || '', message.id)}
+              onClick={() => copyToClipboard(displayContent || '', message.id)}
             >
               复制此消息
             </Button>
@@ -331,10 +368,12 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     }
 
     const timestamp = new Date();
+    const contentWithDepth = `${thoughtDepth}\n${content}`;
     const userMessage: ChatMessage = {
       id: `user-${timestamp.getTime()}`,
       role: 'user',
-      content,
+      content: contentWithDepth,
+      displayContent: content,
       timestamp,
     };
 
@@ -543,15 +582,15 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       }
       setIsThinking(false);
     }
-  }, [agent.id, inputValue, isThinking, messages, permissionMode, sessionId, shouldClearContext, upsertAssistantMessage]);
+  }, [agent.id, inputValue, isThinking, messages, permissionMode, thoughtDepth, sessionId, shouldClearContext, upsertAssistantMessage]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* 头部信息 */}
       <div className="p-4 bg-white border-b">
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-3">
-            <div className="flex justify-center items-center w-10 h-10 bg-blue-500 rounded-full">
+            <div className="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full">
               <RobotOutlined className="text-lg text-white" />
             </div>
             <div>
@@ -621,9 +660,9 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
       {/* 聊天区域 */}
       <div className="flex flex-col flex-1">
         {/* 消息列表 */}
-        <div ref={scrollContainerRef} className="overflow-y-auto flex-1 p-4">
+        <div ref={scrollContainerRef} className="flex-1 p-4 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="flex justify-center items-center h-full">
+            <div className="flex items-center justify-center h-full">
               <Welcome
                 title="开始对话"
                 description={`与 ${agent.name} 开始智能对话`}
@@ -639,7 +678,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
                   return {
                     id: message.id,
                     role: isUser ? 'user' : 'assistant',
-                    content: message.content || '...',
+                    content: (message.displayContent ?? message.content) || '...',
                     timestamp: message.streaming ? '生成中...' : message.timestamp.toLocaleTimeString(),
                     loading: message.streaming,
                     variant: message.error ? 'outlined' : undefined,
@@ -698,6 +737,15 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
               options={PERMISSION_MODE_OPTIONS.map(option => ({ value: option.value, label: option.label }))}
               popupMatchSelectWidth={false}
             />
+            <span className="text-gray-500">思考深度</span>
+            <Select<ThoughtDepth>
+              size="small"
+              value={thoughtDepth}
+              className="min-w-[180px]"
+              onChange={(value) => setThoughtDepth(value)}
+              options={THOUGHT_DEPTH_OPTIONS.map(option => ({ value: option.value, label: option.label }))}
+              popupMatchSelectWidth={false}
+            />
           </Space>
           <div className="text-[11px] text-gray-400 mb-3">
             {currentPermissionMode?.description}
@@ -712,7 +760,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
             loading={isThinking}
             prefix={
               <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
-                <UserOutlined className="text-white text-sm" />
+                <UserOutlined className="text-sm text-white" />
               </div>
             }
             actions={[
@@ -729,7 +777,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
             ]}
           />
 
-          <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+          <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
             <span>已启用工具: {agent.enabledTools?.length ? agent.enabledTools.join(', ') : '无'}</span>
             {isThinking && (
               <span className="flex items-center text-blue-500">
@@ -743,3 +791,4 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     </div>
   );
 }
+
