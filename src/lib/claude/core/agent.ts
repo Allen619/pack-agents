@@ -3,17 +3,18 @@ import { generateId } from '@/lib/utils';
 import { ConfigManager } from '@/lib/storage/config-manager';
 import { MCPProvider } from '../tools/mcp-provider';
 import { SessionStore } from '../../storage/session-store';
+import { ClaudeQueryEngine } from './query';
 
 export interface ClaudeAgentConfig {
   id: string;
   name: string;
   description: string;
   role: 'main' | 'sub' | 'synthesis';
+  systemPrompt: string; // 修复：将systemPrompt移到根级别，与实际配置文件结构匹配
 
   // Claude Code SDK 核心配置
   claudeConfig: {
     model: 'claude-sonnet-4-20250514' | 'claude-haiku-20250514';
-    systemPrompt: string;
     allowedTools: Array<'Read' | 'Edit' | 'Write' | 'Glob' | 'Grep' | 'Bash'>;
     mcpServers?: Record<string, MCPServerConfig>;
     maxTurns: number;
@@ -110,10 +111,12 @@ export class ClaudeAgent {
   private mcpProvider: MCPProvider;
   private configManager = new ConfigManager();
   private globalMcpLoaded = false;
+  private queryEngine: ClaudeQueryEngine;
 
   constructor(config: ClaudeAgentConfig) {
     this.config = config;
     this.mcpProvider = new MCPProvider(config.claudeConfig.mcpServers);
+    this.queryEngine = new ClaudeQueryEngine();
   }
 
   private async ensureGlobalMcpServers(): Promise<void> {
@@ -179,14 +182,16 @@ export class ClaudeAgent {
       const results: any[] = [];
       const startTime = Date.now();
 
+      // 构建查询选项 - 使用我们改进的 buildQueryOptions 方法
+      const baseOptions = await this.queryEngine.buildQueryOptions(this.config);
+
+      console.log('Agent.execute() - Built query options:', JSON.stringify(baseOptions, null, 2));
+
       for await (const message of query({
         prompt,
         options: {
-          model: this.config.claudeConfig.model,
-          allowedTools: this.config.claudeConfig.allowedTools,
-          maxTurns: this.config.claudeConfig.maxTurns,
+          ...baseOptions,
           resume: sessionId,
-          mcpServers: this.mcpProvider.getConfig(),
         },
       })) {
         if (message.type === 'result') {
@@ -232,14 +237,16 @@ export class ClaudeAgent {
     await this.ensureGlobalMcpServers();
     const sessionId = await this.getOrCreateSession();
 
+    // 构建查询选项 - 使用我们改进的 buildQueryOptions 方法
+    const baseOptions = await this.queryEngine.buildQueryOptions(this.config);
+
+    console.log('Agent.executeStream() - Built query options:', JSON.stringify(baseOptions, null, 2));
+
     for await (const message of query({
       prompt,
       options: {
-        model: this.config.claudeConfig.model,
-        allowedTools: this.config.claudeConfig.allowedTools,
-        maxTurns: this.config.claudeConfig.maxTurns,
+        ...baseOptions,
         resume: sessionId,
-        mcpServers: this.mcpProvider.getConfig(),
       },
     })) {
       // 转换 Claude Code SDK 消息为 Agent 消息格式

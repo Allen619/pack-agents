@@ -9,11 +9,11 @@ export interface ClaudeAgentConfig {
   name: string;
   description: string;
   role: AgentRole;
+  systemPrompt: string; // 修复：将systemPrompt移到根级别，与实际配置文件结构匹配
 
   // Claude Code SDK 核心配置
   claudeConfig: {
     model: 'claude-sonnet-4-20250514' | 'claude-haiku-20250514';
-    systemPrompt: string;
     allowedTools: Array<'Read' | 'Edit' | 'Write' | 'Glob' | 'Grep' | 'Bash'>;
     mcpServers?: Record<string, MCPServerConfig>;
     maxTurns: number;

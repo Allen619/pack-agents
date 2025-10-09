@@ -29,6 +29,8 @@ import {
 } from '@ant-design/icons';
 import { ClaudeAgentConfig, MCPServerConfig, MCPServerDefinition, ApiResponse } from '@/lib/types';
 import { generateId } from '@/lib/utils';
+import { ConfigManager } from '@/lib/storage/config-manager';
+import { syncMcpBindings } from '@/lib/storage/mcp-binding';
 
 const isAbsolutePath = (value: string) => {
   if (!value) {
@@ -225,6 +227,30 @@ export const ClaudeAgentConfigForm: React.FC<ClaudeAgentConfigFormProps> = ({
 
       await onSave(config);
       message.success('Agent配置保存成功');
+
+      // 同步 MCP 配置到知识库目录
+      try {
+        const configManager = new ConfigManager();
+        await syncMcpBindings(configManager, knowledgePaths, mcpServers.map(s => s.key));
+
+        // 提供详细的反馈信息
+        const primaryPath = knowledgePaths[0];
+        const serverCount = mcpServers.length;
+        const serverNames = mcpServers.map(s => s.config.name).join(', ');
+
+        message.success({
+          content: `MCP 配置已同步`,
+          description: `在 ${primaryPath} 创建了 .mcp.json，包含 ${serverCount} 个服务器: ${serverNames}`,
+          duration: 3,
+        });
+      } catch (mcpError) {
+        console.warn('MCP 配置同步失败:', mcpError);
+        message.error({
+          content: 'MCP 配置同步失败',
+          description: `请检查知识库路径 ${knowledgePaths[0]} 的写入权限`,
+          duration: 5,
+        });
+      }
     } catch (error: any) {
       message.error(`保存失败: ${error.message}`);
     }

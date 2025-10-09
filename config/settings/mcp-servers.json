@@ -18,6 +18,43 @@
       "id": "_l1MsIHmCJAOEsvLS1G1d",
       "createdAt": "2025-10-01T02:26:43.890Z",
       "updatedAt": "2025-10-01T02:26:43.890Z"
+    },
+    {
+      "name": "Filesystem文件系统",
+      "description": "Node.js server implementing Model Context Protocol (MCP) for filesystem operations.",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "D:\\szy\\reader\\docs"
+      ],
+      "env": {},
+      "tags": [],
+      "providers": [],
+      "supportedModels": [],
+      "status": "active",
+      "timeout": 300000,
+      "tools": [],
+      "id": "6OB7bkE7oYpEBBlsX2URY",
+      "createdAt": "2025-10-03T05:24:26.935Z",
+      "updatedAt": "2025-10-03T05:24:26.935Z"
+    },
+    {
+      "name": "time",
+      "command": "uvx",
+      "args": [
+        "mcp-server-time"
+      ],
+      "env": {},
+      "tags": [],
+      "providers": [],
+      "supportedModels": [],
+      "status": "active",
+      "timeout": 300000,
+      "tools": [],
+      "id": "NCTQ7_wA4sZ79uVhxI9u3",
+      "createdAt": "2025-10-05T18:20:51.235Z",
+      "updatedAt": "2025-10-05T18:20:51.235Z"
     }
   ]
 }

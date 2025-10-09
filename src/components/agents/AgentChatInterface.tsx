@@ -39,6 +39,11 @@ const PERMISSION_MODE_OPTIONS: Array<{
   description: string;
 }> = [
   {
+    value: 'bypassPermissions',
+    label: 'bypassPermissions（绕过所有权限）',
+    description: '自动执行所有工具操作，包括文件编辑、Bash命令和MCP工具，无需手动确认。',
+  },
+  {
     value: 'acceptEdits',
     label: 'acceptEdits（自动接受编辑）',
     description: '自动接受常规文件编辑操作，仍会对潜在风险请求确认。',
@@ -47,11 +52,6 @@ const PERMISSION_MODE_OPTIONS: Array<{
     value: 'default',
     label: 'default（逐项确认）',
     description: '每次工具调用都需人工确认，适合严格审核或演示场景。',
-  },
-  {
-    value: 'bypassPermissions',
-    label: 'bypassPermissions（跳过权限）',
-    description: '直接执行所有启用的工具，仅在高度受控环境中使用。',
   },
   {
     value: 'plan',
@@ -192,7 +192,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
   const [isThinking, setIsThinking] = useState(false);
   const [shouldClearContext, setShouldClearContext] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>('acceptEdits');
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>('bypassPermissions');
   const activeRequest = useRef<AbortController | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -216,7 +216,7 @@ export function AgentChatInterface({ agent, onBack, onOpenSettings }: AgentChatI
     setMessages([buildWelcomeMessage(agent)]);
     setInputValue('');
     setIsThinking(false);
-    setPermissionMode('acceptEdits');
+    setPermissionMode('bypassPermissions');
     if (activeRequest.current) {
       activeRequest.current.abort();
       activeRequest.current = null;
