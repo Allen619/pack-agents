@@ -51,4 +51,6 @@ schedule.md
 AGENTS.md
 
 
-.claude/
+.claude/*
+
+data

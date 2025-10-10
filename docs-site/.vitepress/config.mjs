@@ -52,6 +52,7 @@ export default defineConfig({
           collapsed: false,
           items: [
             { text: 'Agent 设计', link: '/user/best-practices/agent-design' },
+            { text: '协调内核 Demo', link: '/user/advanced/coordination-demo-guide' },
           ],
         },
         {
@@ -60,6 +61,7 @@ export default defineConfig({
           items: [
             { text: '术语', link: '/user/reference/glossary' },
             { text: 'API 参考', link: '/user/reference/api-reference' },
+            { text: '协调内核与灰度开关', link: '/user/reference/coordination-core' },
             { text: 'LLM 配置', link: '/user/reference/llm-config' },
             { text: '更新日志', link: '/user/reference/changelog' },
           ],
@@ -156,4 +158,3 @@ export default defineConfig({
     outDir: '../dist-docs',
   },
 });
-

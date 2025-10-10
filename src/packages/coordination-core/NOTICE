@@ -1,0 +1,8 @@
+This module draws design inspiration and selected interface shapes from a reference project ("claude-flow").
+
+Only minimal type and adapter interfaces were derived conceptually and re-authored to fit this repository's architecture.
+No direct source code from the reference project is included here.
+
+If any future code segments are copied from an MIT-licensed source, ensure the original copyright and license
+are preserved alongside those specific files.
+

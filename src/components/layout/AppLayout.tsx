@@ -15,6 +15,7 @@ import {
   MenuFoldOutlined,
   ApiOutlined
 } from '@ant-design/icons';
+import { ExperimentOutlined } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
 
@@ -93,6 +94,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
       onClick: () => router.push('/mcp'),
     },
     {
+      key: 'orchestration',
+      icon: <ShareAltOutlined />,
+      label: '智能体编排',
+      onClick: () => router.push('/orchestration'),
+    },
+    {
+      key: 'demo',
+      icon: <ExperimentOutlined />,
+      label: '协调内核 Demo',
+      onClick: () => router.push('/demo/coordination'),
+    },
+    {
       key: 'settings',
       icon: <SettingOutlined />,
       label: '系统设置',
@@ -120,6 +133,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
     if (pathname.startsWith('/executions')) return ['executions'];
     if (pathname.startsWith('/mcp')) return ['mcp'];
+    if (pathname.startsWith('/orchestration')) return ['orchestration'];
+    if (pathname.startsWith('/demo/coordination')) return ['demo'];
     if (pathname.startsWith('/settings')) return ['settings'];
     return [];
   };
