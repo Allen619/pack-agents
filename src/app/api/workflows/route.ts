@@ -69,6 +69,32 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    // 填充必要的默认结构，避免空创建时校验失败
+    if (!body.agentIds) body.agentIds = [];
+    if (!body.mainAgentId) body.mainAgentId = '';
+    if (!body.executionFlow) {
+      body.executionFlow = { stages: [], dependencies: [] };
+    } else {
+      body.executionFlow.stages = body.executionFlow.stages || [];
+      body.executionFlow.dependencies = body.executionFlow.dependencies || [];
+    }
+    if (!body.configuration) {
+      body.configuration = {
+        maxExecutionTime: 300000,
+        autoRetry: false,
+        notifications: false,
+      };
+    }
+    // 兼容前端/调用方以“秒”为单位的传入：若 < 1000，按秒转毫秒
+    if (
+      body?.configuration?.maxExecutionTime !== undefined &&
+      typeof body.configuration.maxExecutionTime === 'number' &&
+      body.configuration.maxExecutionTime < 1000
+    ) {
+      body.configuration.maxExecutionTime = Math.floor(
+        body.configuration.maxExecutionTime * 1000
+      );
+    }
     
     // Validate workflow configuration
     const validationResult = validator.validateWorkflow(body);

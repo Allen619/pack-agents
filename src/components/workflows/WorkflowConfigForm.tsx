@@ -8,15 +8,19 @@ const { Title, Text } = Typography;
 interface WorkflowConfigFormProps {
   initialValues?: Partial<WorkflowConfig>;
   onSubmit: (values: WorkflowConfig) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   loading?: boolean;
+  hideActions?: boolean;
+  fullWidth?: boolean;
 }
 
 export function WorkflowConfigForm({ 
   initialValues, 
   onSubmit, 
   onCancel, 
-  loading = false 
+  loading = false,
+  hideActions = false,
+  fullWidth = false
 }: WorkflowConfigFormProps) {
   const [form] = Form.useForm();
   const isEdit = !!initialValues?.id;
@@ -33,7 +37,9 @@ export function WorkflowConfigForm({
         dependencies: []
       },
       configuration: {
-        maxExecutionTime: values.maxExecutionTime || 300000, // 5 minutes default
+        // 前端表单以“秒”为单位，后端以“毫秒”存储与校验
+        // 统一在提交时转换为毫秒，未填写时按 5 分钟（300 秒）转换为 300000 毫秒
+        maxExecutionTime: (values.maxExecutionTime ? Number(values.maxExecutionTime) : 300) * 1000,
         autoRetry: values.autoRetry || false,
         notifications: values.notifications || false
       },
@@ -50,7 +56,7 @@ export function WorkflowConfigForm({
   };
 
   return (
-    <div className="workflow-config-form max-w-2xl mx-auto">
+    <div className={fullWidth ? 'workflow-config-form w-full' : 'workflow-config-form max-w-2xl mx-auto'}>
       <Card className="mb-6">
         <Title level={3} className="!mb-2">
           {isEdit ? '编辑工作流' : '创建新工作流'}
@@ -157,7 +163,8 @@ export function WorkflowConfigForm({
 
         <Divider />
 
-        <Form.Item className="mb-0">
+        {!hideActions && (
+          <Form.Item className="mb-0">
           <Space className="w-full justify-end">
             <Button onClick={onCancel}>
               取消
@@ -171,7 +178,8 @@ export function WorkflowConfigForm({
               {isEdit ? '保存更改' : '创建工作流'}
             </Button>
           </Space>
-        </Form.Item>
+          </Form.Item>
+        )}
       </Form>
     </div>
   );

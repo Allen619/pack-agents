@@ -1,0 +1,25 @@
+{
+  "id": "jyilxeykh6mgjf9rpj",
+  "name": "啊啊",
+  "description": "",
+  "agentIds": [
+    "kV2efxY6f-7LNIHA8PuLz",
+    "HiI0AfwwObo1ujhUDZ7mN"
+  ],
+  "mainAgentId": "HiI0AfwwObo1ujhUDZ7mN",
+  "executionFlow": {
+    "stages": [],
+    "dependencies": []
+  },
+  "configuration": {
+    "maxExecutionTime": 300000,
+    "autoRetry": false,
+    "notifications": false
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "createdAt": "2025-10-09T12:57:14.887Z",
+    "updatedAt": "2025-10-09T12:57:29.021Z",
+    "executionCount": 0
+  }
+}

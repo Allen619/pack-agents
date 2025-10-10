@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Tabs, Card } from 'antd';
+import { useState } from 'react';
 import { LoadingSpinner } from '@/lib/utils/lazy-loading';
 import { WorkflowConfigForm } from '@/components/workflows/WorkflowConfigForm';
 import { AgentTeamAssembly } from '@/components/workflows/AgentTeamAssembly';
@@ -15,6 +16,7 @@ const { TabPane } = Tabs;
 
 export default function EditWorkflowPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<string>('basic');
   const { workflow, isLoading, error } = useWorkflow(params.id);
   const { updateWorkflow, isUpdating } = useWorkflows();
 
@@ -28,7 +30,7 @@ export default function EditWorkflowPage({ params }: { params: { id: string } })
           configuration: workflowData.configuration
         }
       });
-      // Stay on edit page to continue editing
+      // 保持在编辑流程中，由导航按钮控制流转
     } catch (error) {
       // Error handling is done in the hook
     }
@@ -103,18 +105,22 @@ export default function EditWorkflowPage({ params }: { params: { id: string } })
             />
 
           <div className="mt-6">
-            <Tabs defaultActiveKey="basic" size="large">
+            <Tabs activeKey={activeTab} onChange={setActiveTab} size="large">
               <TabPane tab="基本信息" key="basic">
-                <WorkflowConfigForm
-                  initialValues={workflow}
-                  onSubmit={handleUpdateBasicInfo}
-                  onCancel={handleCancel}
-                  loading={isUpdating}
-                />
+                <div className="w-full">
+                  <WorkflowConfigForm
+                    initialValues={workflow}
+                    onSubmit={handleUpdateBasicInfo}
+                    onCancel={handleCancel}
+                    loading={isUpdating}
+                    hideActions
+                    fullWidth
+                  />
+                </div>
               </TabPane>
 
               <TabPane tab="Agent 团队" key="team">
-                <div className="max-w-4xl mx-auto">
+                <div className="w-full">
                   <AgentTeamAssembly
                     workflow={workflow}
                     onUpdate={handleUpdateTeam}
@@ -123,7 +129,7 @@ export default function EditWorkflowPage({ params }: { params: { id: string } })
               </TabPane>
 
               <TabPane tab="执行流程" key="flow">
-                <div className="max-w-full">
+                <div className="w-full">
                   <FlowCanvasEditor
                     workflow={workflow}
                     onUpdate={handleUpdateTeam}
@@ -131,6 +137,8 @@ export default function EditWorkflowPage({ params }: { params: { id: string } })
                 </div>
               </TabPane>
             </Tabs>
+
+            
           </div>
         </div>
       </div>

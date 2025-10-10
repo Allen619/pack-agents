@@ -98,7 +98,8 @@ export class ConfigValidator {
         id: { type: 'string', minLength: 1 },
         name: { type: 'string', minLength: 1 },
         description: { type: 'string' },
-        agentIds: { type: 'array', minItems: 1, items: { type: 'string' } },
+        // 允许在创建时为空，后续通过子路由或PUT合并补充
+        agentIds: { type: 'array', minItems: 0, items: { type: 'string' } },
         mainAgentId: { type: 'string' },
         executionFlow: {
           type: 'object',
@@ -106,7 +107,8 @@ export class ConfigValidator {
           properties: {
             stages: {
               type: 'array',
-              minItems: 1,
+              // 允许先创建空工作流，再逐步添加 stage
+              minItems: 0,
               items: {
                 type: 'object',
                 required: ['id', 'name', 'type', 'tasks'],

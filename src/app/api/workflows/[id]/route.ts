@@ -39,47 +39,92 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    
-    // Ensure ID matches
-    body.id = params.id;
-    
-    // Validate workflow configuration
-    const validationResult = validator.validateWorkflow(body);
+
+    // 装载现有工作流，用于与传入的部分更新进行合并
+    let existingWorkflow: WorkflowConfig | null = null;
+    try {
+      existingWorkflow = await configManager.loadWorkflow(params.id);
+    } catch {
+      existingWorkflow = null;
+    }
+
+    // 确保 ID 一致
+    const incoming: Partial<WorkflowConfig> = { ...body, id: params.id };
+
+    // 执行深度合并（顶层 + 常用嵌套字段）以支持部分更新
+    const merged: WorkflowConfig = existingWorkflow
+      ? {
+          ...existingWorkflow,
+          ...incoming,
+          executionFlow: {
+            ...(existingWorkflow.executionFlow || { stages: [], dependencies: [] }),
+            ...(incoming.executionFlow || {}),
+          },
+          configuration: {
+            ...(existingWorkflow.configuration || {
+              maxExecutionTime: 300000,
+              autoRetry: false,
+              notifications: false,
+            }),
+            ...(incoming.configuration || {}),
+          },
+          metadata: {
+            ...existingWorkflow.metadata,
+            ...(incoming.metadata || {}),
+            updatedAt: new Date().toISOString(),
+            createdAt: existingWorkflow.metadata.createdAt,
+          },
+          agentIds: incoming.agentIds ?? existingWorkflow.agentIds,
+          mainAgentId: incoming.mainAgentId ?? existingWorkflow.mainAgentId,
+        }
+      : {
+          // 若不存在则创建新对象（允许部分字段缺省）
+          id: params.id,
+          name: (incoming as any).name || '',
+          description: (incoming as any).description || '',
+          agentIds: incoming.agentIds || [],
+          mainAgentId: incoming.mainAgentId || '',
+          executionFlow: incoming.executionFlow || { stages: [], dependencies: [] },
+          configuration:
+            incoming.configuration ||
+            ({ maxExecutionTime: 300000, autoRetry: false, notifications: false } as any),
+          metadata: {
+            version: (incoming.metadata as any)?.version || '1.0.0',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastExecuted: (incoming.metadata as any)?.lastExecuted,
+            executionCount: (incoming.metadata as any)?.executionCount || 0,
+          },
+        };
+
+    // 单位兼容：若 maxExecutionTime < 1000，按“秒”转为“毫秒”
+    if (
+      merged?.configuration?.maxExecutionTime !== undefined &&
+      typeof merged.configuration.maxExecutionTime === 'number' &&
+      merged.configuration.maxExecutionTime < 1000
+    ) {
+      merged.configuration.maxExecutionTime = Math.floor(
+        merged.configuration.maxExecutionTime * 1000
+      );
+    }
+
+    // 校验合并后的结果
+    const validationResult = validator.validateWorkflow(merged);
     if (!validationResult.valid) {
       const response: ApiResponse<null> = {
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Invalid workflow configuration',
-          details: validationResult.errors
-        }
+          details: validationResult.errors,
+        },
       };
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Load existing workflow to preserve creation date
-    try {
-      const existingWorkflow = await configManager.loadWorkflow(params.id);
-      body.metadata = {
-        ...body.metadata,
-        createdAt: existingWorkflow.metadata.createdAt,
-        updatedAt: new Date().toISOString()
-      };
-    } catch {
-      // Workflow doesn't exist, treat as new
-      const now = new Date().toISOString();
-      body.metadata = {
-        version: '1.0.0',
-        createdAt: now,
-        updatedAt: now,
-        executionCount: 0,
-        ...body.metadata
-      };
-    }
-
-    // Validate that all agent IDs exist
-    if (body.agentIds && body.agentIds.length > 0) {
-      for (const agentId of body.agentIds) {
+    // 校验 Agent 是否存在（基于合并后结果）
+    if (merged.agentIds && merged.agentIds.length > 0) {
+      for (const agentId of merged.agentIds) {
         try {
           await configManager.loadAgent(agentId);
         } catch {
@@ -95,8 +140,8 @@ export async function PUT(
       }
     }
 
-    // Validate main agent ID
-    if (body.mainAgentId && !body.agentIds.includes(body.mainAgentId)) {
+    // 校验主 Agent ID 是否包含在 agentIds 中
+    if (merged.mainAgentId && !merged.agentIds.includes(merged.mainAgentId)) {
       const response: ApiResponse<null> = {
         success: false,
         error: {
@@ -107,18 +152,18 @@ export async function PUT(
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Save updated workflow
-    await configManager.saveWorkflow(body);
+    // 保存更新后的工作流
+    await configManager.saveWorkflow(merged);
 
     logger.info('Workflow updated successfully', { 
       workflowId: params.id, 
-      name: body.name,
-      agentCount: body.agentIds.length 
+      name: merged.name,
+      agentCount: merged.agentIds.length 
     });
 
     const response: ApiResponse<WorkflowConfig> = {
       success: true,
-      data: body
+      data: merged
     };
 
     return NextResponse.json(response);

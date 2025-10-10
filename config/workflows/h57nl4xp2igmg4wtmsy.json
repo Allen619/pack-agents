@@ -1,14 +1,16 @@
 {
   "id": "h57nl4xp2igmg4wtmsy",
-  "name": "代码审查工作流 - 副本",
+  "name": "代码审查工作流",
   "description": "多 Agent 协作进行代码审查，包括代码分析、安全检查和质量评估",
   "agentIds": [
     "placeholder-code_analyzer",
     "placeholder-security_auditor",
     "placeholder-quality_reviewer",
-    "placeholder-report_synthesizer"
+    "placeholder-report_synthesizer",
+    "HiI0AfwwObo1ujhUDZ7mN",
+    "kV2efxY6f-7LNIHA8PuLz"
   ],
-  "mainAgentId": "placeholder-code_analyzer",
+  "mainAgentId": "HiI0AfwwObo1ujhUDZ7mN",
   "executionFlow": {
     "stages": [
       {
@@ -84,7 +86,7 @@
   "metadata": {
     "version": "1.0.0",
     "createdAt": "2025-09-29T09:12:02.482Z",
-    "updatedAt": "2025-09-29T09:12:02.608Z",
+    "updatedAt": "2025-10-09T13:37:51.994Z",
     "executionCount": 0
   }
 }
