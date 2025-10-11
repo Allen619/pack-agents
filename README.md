@@ -146,7 +146,7 @@ pack-agents/
 ### Agent 管理
 
 - `GET /api/agents` - 获取 Agent 列表
-- `POST /api/agents` - 创建新 Agent
+- `POST /api/agents` - 创建新的模型助手
 - `GET /api/agents/{id}` - 获取单个 Agent
 - `PUT /api/agents/{id}` - 更新 Agent
 - `DELETE /api/agents/{id}` - 删除 Agent
@@ -214,6 +214,7 @@ pack-agents/
 ---
 
 **Pack Agents** - 让 AI 工作流变得简单而强大 🚀
+
 # Pack Agents - 多 Agent 工作流管理平台
 
 > 基于 Claude Code SDK 的 AI 工作流管理平台，支持多 Agent 协作、可视化编排与集成。

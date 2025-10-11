@@ -1,34 +1,74 @@
 // UTF-8
-import { NextRequest } from 'next/server';
-import { subscribe } from '@/lib/coordination/run-bus';
+import { NextResponse } from 'next/server';
+import { readRun } from '@/lib/orchestration/store';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const runId = searchParams.get('runId') || '';
-  if (!runId) return new Response('runId required', { status: 400 });
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const runId = url.searchParams.get('runId') || '';
+  if (!runId) {
+    return NextResponse.json({ success: false, error: { message: '缺少 runId' } }, { status: 400 });
+  }
 
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    start(controller) {
-      const send = (payload: any) => controller.enqueue(encoder.encode(JSON.stringify(payload) + '\n'));
-      const unsubscribe = subscribe(runId, send);
-      // 立即推送握手消息
-      send({ type: 'CONNECTED', runId, at: Date.now() });
-      (controller as any)._unsubscribe = unsubscribe;
-    },
-    cancel() {
-      const unsubscribe = (this as any)._unsubscribe as undefined | (() => void);
-      if (unsubscribe) unsubscribe();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const send = (obj: any) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+
+      send({ type: 'info', at: Date.now(), text: `运行 ${runId} 实时输出已连接` });
+
+      let sentPlan = false;
+      let sentExecCount = 0;
+      let sentSummary = false;
+      let closed = false;
+
+      const timer = setInterval(async () => {
+        try {
+          const rec = await readRun(runId);
+          if (!rec) return;
+
+          if (!sentPlan && rec.planText) {
+            send({ type: 'stage', stage: 'plan', at: Date.now(), text: '规划进行中' });
+            send({ type: 'delta', stage: 'plan', at: Date.now(), text: rec.planText.slice(0, 2000) });
+            sentPlan = true;
+          }
+
+          const execLen = Array.isArray(rec.execResults) ? rec.execResults.length : 0;
+          if (execLen > sentExecCount) {
+            for (let i = sentExecCount; i < execLen; i++) {
+              const idx = i + 1;
+              const r = rec.execResults![i];
+              send({ type: 'stage', stage: `execute-${idx}`, at: Date.now(), text: `执行通道 ${idx} 进行中` });
+              if (r?.text) send({ type: 'delta', stage: `execute-${idx}`, at: Date.now(), text: r.text.slice(0, 2000) });
+            }
+            sentExecCount = execLen;
+          }
+
+          if (!sentSummary && rec.sumText) {
+            send({ type: 'stage', stage: 'summarize', at: Date.now(), text: '总结进行中' });
+            send({ type: 'delta', stage: 'summarize', at: Date.now(), text: rec.sumText.slice(0, 2000) });
+            sentSummary = true;
+          }
+
+          if (rec.status === 'completed' || rec.status === 'failed') {
+            send({ type: 'result', at: Date.now(), text: rec.status === 'completed' ? '已完成' : '失败' });
+            clearInterval(timer);
+            closed = true;
+            controller.close();
+          }
+        } catch {
+          // ignore polling errors
+        }
+      }, 500);
+
+      (controller as any).onCancel = () => { if (!closed) clearInterval(timer); };
     },
   });
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'application/x-ndjson',
+      'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
-      'Transfer-Encoding': 'chunked',
     },
   });
 }
-

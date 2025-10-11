@@ -97,7 +97,7 @@ export default function AgentsPage() {
     <AppLayout>
       <div className="p-6">
         <PageHeader
-          title="Agent 工厂"
+          title="模型助手"
           description="创建和管理您的 AI Agent"
           extra={
             <Space>

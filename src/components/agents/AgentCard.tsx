@@ -111,7 +111,7 @@ export function AgentCard({
     if (onDelete) {
       try {
         await onDelete(agent);
-        message.success(`Agent "${agent.name}" 已删除`);
+        message.success(`模型助手 "${agent.name}" 已删除`);
       } catch (error) {
         message.error('删除失败');
       }

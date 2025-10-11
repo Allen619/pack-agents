@@ -26,12 +26,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
     {
       key: 'agents',
       icon: <RobotOutlined />,
-      label: 'Agent 工厂',
+      label: '模型助手',
       onClick: () => router.push('/agents'),
       children: [
-        { key: 'agents-list', label: 'Agent 列表', onClick: () => router.push('/agents') },
-        { key: 'agents-create', label: '创建 Agent', onClick: () => router.push('/agents/create') },
-        { key: 'agents-templates', label: '模板', onClick: () => router.push('/agents/templates') },
+        { key: 'agents-list', label: '模型助手列表', onClick: () => router.push('/agents') },
+        { key: 'agents-create', label: '创建模型助手', onClick: () => router.push('/agents/create') },
+        { key: 'agents-templates', label: '模型助手模板', onClick: () => router.push('/agents/templates') },
       ],
     },
     {
@@ -136,4 +136,3 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </Layout>
   );
 }
-

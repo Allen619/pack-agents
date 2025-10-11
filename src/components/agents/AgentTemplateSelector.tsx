@@ -71,7 +71,7 @@ function CustomizeModal({ template, visible, onOk, onCancel }: CustomizeModalPro
       onOk={handleOk}
       onCancel={onCancel}
       width={600}
-      okText="创建 Agent"
+      okText="创建模型助手"
       cancelText="取消"
     >
       {template && (

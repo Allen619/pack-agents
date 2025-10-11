@@ -79,7 +79,7 @@ export default function EditAgentPage({ params }: EditAgentPageProps) {
       const result: ApiResponse<AgentConfig> = await response.json();
 
       if (result.success) {
-        message.success('Agent 更新成功');
+        message.success('模型助手更新成功');
 
         // 立即更新本地状态，避免额外的网络请求
         setAgent(prev => prev ? { ...prev, ...values } : null);
@@ -109,8 +109,8 @@ export default function EditAgentPage({ params }: EditAgentPageProps) {
       <AppLayout>
         <div className="p-6">
           <PageHeader
-            title="编辑 Agent"
-            description="正在加载 Agent 配置..."
+            title="编辑模型助手"
+            description="正在加载模型助手配置..."
           />
           <Card>
             <LoadingSpinner size="large" tip="加载 Agent 信息..." />
@@ -125,8 +125,8 @@ export default function EditAgentPage({ params }: EditAgentPageProps) {
       <AppLayout>
         <div className="p-6">
           <PageHeader
-            title="编辑 Agent"
-            description="编辑 Agent 配置"
+            title="编辑模型助手"
+            description="编辑模型助手配置"
           />
           <Card>
             <div className="text-center py-8">
@@ -157,8 +157,8 @@ export default function EditAgentPage({ params }: EditAgentPageProps) {
     <AppLayout>
       <div className="p-6">
         <PageHeader
-          title={`编辑 Agent - ${agent.name}`}
-          description="修改 Agent 配置信息"
+          title={`编辑模型助手 - ${agent.name}`}
+          description="修改模型助手配置信息"
         />
 
         <Card>

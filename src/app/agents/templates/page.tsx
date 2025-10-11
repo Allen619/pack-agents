@@ -26,7 +26,7 @@ export default function AgentTemplatesPage() {
     <AppLayout>
       <div className="p-6">
         <PageHeader
-          title="Agent 模板"
+          title="模型助手模板"
           description="从预制模板快速创建 Agent"
           extra={
             <Space>

@@ -21,7 +21,7 @@ test.describe('Agent 管理功能', () => {
     await expect(page.locator('text=浏览模板')).toBeVisible();
   });
 
-  test('创建新 Agent 流程', async ({ page }) => {
+  test('创建新的模型助手 流程', async ({ page }) => {
     // 导航到创建页面
     await page.click('text=Agent 工厂');
     await page.click('text=Agent 列表');

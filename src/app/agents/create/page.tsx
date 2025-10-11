@@ -20,7 +20,7 @@ export default function CreateAgentPage() {
       const newAgent = await createAgent(values);
       
       if (newAgent) {
-        message.success('Agent 创建成功');
+        message.success('模型助手创建成功');
         startTransition(() => {
           router.replace('/agents');
           router.refresh();
@@ -42,7 +42,7 @@ export default function CreateAgentPage() {
     <AppLayout>
       <div className="p-6">
         <PageHeader
-          title="创建 Agent"
+          title="创建模型助手"
           description="配置一个新的 AI Agent"
         />
 

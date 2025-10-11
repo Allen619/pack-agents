@@ -259,7 +259,7 @@ export function AgentConfigForm({
               <Col span={12}>
                 <Form.Item
                   name="name"
-                  label="Agent 名称"
+                  label="模型助手名称"
                   rules={[{ required: true, message: '请输入 Agent 名称' }]}
                 >
                   <Input placeholder="例如: 代码分析助手" />
@@ -268,8 +268,8 @@ export function AgentConfigForm({
               <Col span={12}>
                 <Form.Item
                   name="role"
-                  label="Agent 角色"
-                  rules={[{ required: true, message: '请选择 Agent 角色' }]}
+                  label="助手角色"
+                  rules={[{ required: true, message: '请选择助手角色' }]}
                 >
                   <Select placeholder="选择角色">
                     <Option value="main">主管 Agent</Option>
@@ -465,7 +465,7 @@ export function AgentConfigForm({
           <Button onClick={onCancel}>取消</Button>
         )}
         <Button type="primary" htmlType="submit" loading={loading}>
-          {agent ? '更新 Agent' : '创建 Agent'}
+          {agent ? '更新模型助手' : '创建模型助手'}
         </Button>
       </div>
     </Form>

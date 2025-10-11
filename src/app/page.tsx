@@ -112,7 +112,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="h-full flex items-center justify-center">
+        <div className="flex justify-center items-center h-full">
           <Text type="secondary">加载中...</Text>
         </div>
       </AppLayout>
@@ -144,7 +144,7 @@ export default function HomePage() {
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12} lg={6}>
               <Card className="text-center">
-                <Statistic title="Agent 总数" value={data?.stats.totalAgents || 0} prefix={<RobotOutlined />} valueStyle={{ color: '#1890ff' }} />
+                <Statistic title="模型助手总数" value={data?.stats.totalAgents || 0} prefix={<RobotOutlined />} valueStyle={{ color: '#1890ff' }} />
               </Card>
             </Col>
             <Col xs={24} sm={12} lg={6}>
@@ -170,7 +170,7 @@ export default function HomePage() {
               <Card title="快速开始" className="h-full" extra={<Link href="/agents">查看全部</Link>}>
                 <Space direction="vertical" className="w-full">
                   <Button type="dashed" block icon={<RobotOutlined />} onClick={() => router.push('/agents/create')}>
-                    创建新 Agent
+                    创建新的模型助手
                   </Button>
                   <Button type="dashed" block icon={<FileTextOutlined />} onClick={() => router.push('/agents/templates')}>
                     使用模板
@@ -184,7 +184,7 @@ export default function HomePage() {
                 {data?.activeExecutions && data.activeExecutions.length > 0 ? (
                   <div className="space-y-3">
                     {data.activeExecutions.slice(0, 5).map((execution) => (
-                      <div key={execution.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                      <div key={execution.id} className="flex justify-between items-center p-3 bg-white rounded-lg">
                         <div>
                           <div className="font-medium">{execution.workflowId}</div>
                           <div className="text-sm text-gray-500">{execution.status} · {new Date(execution.metadata.startedAt).toLocaleString()}</div>
@@ -194,8 +194,8 @@ export default function HomePage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <PlayCircleOutlined className="text-4xl mb-2" />
+                  <div className="py-8 text-center text-gray-500">
+                    <PlayCircleOutlined className="mb-2 text-4xl" />
                     <div>暂无活跃执行</div>
                   </div>
                 )}
@@ -222,4 +222,3 @@ function getStatusColor(status: string): string {
       return 'bg-gray-100 text-gray-800';
   }
 }
-
