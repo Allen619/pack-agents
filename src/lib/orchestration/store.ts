@@ -4,7 +4,7 @@ import * as path from 'path';
 
 export type RunRecord = {
   runId: string;
-  status: 'running' | 'completed' | 'failed';
+  status: 'running' | 'completed' | 'failed' | 'terminated';
   startedAt: number;
   finishedAt?: number;
   prompt?: string;

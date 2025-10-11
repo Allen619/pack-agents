@@ -49,8 +49,11 @@ export async function GET(req: Request) {
             sentSummary = true;
           }
 
-          if (rec.status === 'completed' || rec.status === 'failed') {
-            send({ type: 'result', at: Date.now(), text: rec.status === 'completed' ? '已完成' : '失败' });
+          if (rec.status === 'completed' || rec.status === 'failed' || rec.status === 'terminated') {
+            let text = '已完成';
+            if (rec.status === 'failed') text = '失败';
+            if (rec.status === 'terminated') text = '已终止';
+            send({ type: 'result', at: Date.now(), text });
             clearInterval(timer);
             closed = true;
             controller.close();

@@ -1,31 +1,10 @@
-﻿// UTF-8
+// UTF-8
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import {
-  Card,
-  Typography,
-  Space,
-  Form,
-  Input,
-  Select,
-  Button,
-  Switch,
-  Tag,
-  Divider,
-  Row,
-  Col,
-  Tooltip,
-  message,
-  Table,
-  Modal,
-  Popconfirm,
-  Collapse,
-  Tabs,
-  Segmented,
-} from 'antd';
-import { QuestionCircleOutlined, PlayCircleOutlined, HistoryOutlined, DeleteOutlined, FileSearchOutlined } from '@ant-design/icons';
+import { Card, Typography, Space, Form, Input, Select, Button, Switch, Tag, Divider, Row, Col, Tooltip, message, Table, Modal, Popconfirm, Collapse, Tabs } from 'antd';
+import { QuestionCircleOutlined, PlayCircleOutlined, HistoryOutlined, DeleteOutlined, FileSearchOutlined, StopOutlined } from '@ant-design/icons';
 import { useAgents } from '@/hooks/useAgents';
 import markdownit from 'markdown-it';
 import hljs from 'highlight.js';
@@ -38,14 +17,13 @@ export default function OrchestrationPage() {
   const { agents, agentsLoading } = useAgents();
   const agentOptions = useMemo(() => agents.map(a => ({ label: a.name, value: a.id })), [agents]);
 
-  // 表单状态（按需手动选择，默认不选择）
+  // 表单状态（默认不选择）
   const [prompt, setPrompt] = useState('');
   const [planAgentId, setPlanAgentId] = useState<string>('');
   const [executeAgentIds, setExecuteAgentIds] = useState<string[]>([]);
   const [summarizeAgentId, setSummarizeAgentId] = useState<string>('');
   const [flags, setFlags] = useState<Flags>({ enabled: false, shadowMode: false, agentAllowlist: [], taskTypeAllowlist: [] });
 
-  // 不自动预选��理，保持空值
   useEffect(() => {}, [agentsLoading, agents]);
 
   // 实时输出
@@ -98,7 +76,6 @@ export default function OrchestrationPage() {
   const [detail, setDetail] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
-  const [detailViewMode, setDetailViewMode] = useState<'tabs' | 'collapse'>('tabs');
   const loadList = async () => {
     const res = await fetch('/api/orchestration/history');
     const data = await res.json();
@@ -110,12 +87,11 @@ export default function OrchestrationPage() {
     { title: '序号', key: 'index', width: 80, align: 'center' as const, render: (_: any, __: any, index: number) => (currentPage - 1) * pageSize + index + 1 },
     { title: '用户问题', dataIndex: 'prompt', ellipsis: true, render: (v: string) => v ? <Text title={v} className="text-xs">{v.length > 60 ? v.slice(0, 60) + '…' : v}</Text> : '-' },
     { title: '状态', dataIndex: 'status', render: (v: string) => {
-        const zh = v === 'completed' ? '已完成' : v === 'failed' ? '失败' : '进行中';
-        const color = v === 'completed' ? 'green' : v === 'failed' ? 'red' : 'blue';
+        const zh = v === 'completed' ? '已完成' : v === 'failed' ? '失败' : v === 'terminated' ? '已终止' : '进行中';
+        const color = v === 'completed' ? 'green' : v === 'failed' ? 'red' : v === 'terminated' ? 'orange' : 'blue';
         return <Tag color={color}>{zh}</Tag>;
       }
     },
-    
     { title: '开始时间', dataIndex: 'startedAt', render: (v: number) => v ? new Date(v).toLocaleString() : '-' },
     { title: '结束时间', dataIndex: 'finishedAt', render: (v: number) => v ? new Date(v).toLocaleString() : '-' },
     { title: '操作', key: 'op', render: (_: any, r: any) => (
@@ -133,6 +109,7 @@ export default function OrchestrationPage() {
       case 'completed': return '已完成';
       case 'running': return '进行中';
       case 'failed': return '失败';
+      case 'terminated': return '已终止';
       default: return s || '进行中';
     }
   };
@@ -155,7 +132,7 @@ export default function OrchestrationPage() {
   const renderMarkdown = (content?: string) => {
     const normalized = (content || '').trim();
     const safe = normalized.replace(/\(no content\)/g, '').trim();
-    return <div className="max-w-none prose" dangerouslySetInnerHTML={{ __html: md.render(safe) }} />;
+    return <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: md.render(safe) }} />;
   };
 
   return (
@@ -235,7 +212,26 @@ export default function OrchestrationPage() {
                 </Form>
               </Col>
               <Col span={12}>
-                <Card size="small" title="实时输出">
+                <Card size="small" title="实时输出"
+                  extra={
+                    <Tooltip title={runId ? '终止当前运行' : '暂无运行'}>
+                      <Button size="small" danger type="text" icon={<StopOutlined />}
+                        disabled={!runId || starting}
+                        onClick={async ()=>{
+                          if(!runId) return;
+                          try{
+                            const res = await fetch(`/api/orchestration/cancel/${encodeURIComponent(runId)}`,{ method:'POST' });
+                            const data = await res.json();
+                            if(!data?.success) throw new Error(data?.error?.message||'终止失败');
+                            message.success('已终止当前运行');
+                          }catch(e:any){
+                            message.error(e?.message||'终止失败');
+                          }
+                        }}
+                      />
+                    </Tooltip>
+                  }
+                >
                   <div style={{ height: 320, overflow: 'auto', background: '#0b1020', color: '#cde1ff', padding: 12, borderRadius: 6, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas' }}>
                     {log.map((l, idx)=> {
                       const at = new Date(l.at || Date.now()).toLocaleTimeString();
@@ -260,9 +256,8 @@ export default function OrchestrationPage() {
                       } else if (l.type === 'info') {
                         label = '信息';
                         actor = idToName[planAgentId] ? `（${idToName[planAgentId]}）` : '';
-                        // 去掉文本里的 runId，提高可读性
                         if (typeof text === 'string') {
-                          text = text.replace(/运行\s+run_[^\s]+\s*/g, '');
+                          text = text.replace(/运行\s+run_[^\s]+\s*/g, '').trim();
                         }
                       }
                       return (
@@ -305,110 +300,62 @@ export default function OrchestrationPage() {
         >
           {detail ? (
             <Space direction="vertical" style={{ width: '100%' }}>
-              <Text>状态：<Tag color={detail.status==='completed'?'green':detail.status==='failed'?'red':'blue'}>{mapStatus(detail.status||'running')}</Tag></Text>
+              <Text>状态：<Tag color={detail.status==='completed'?'green':detail.status==='failed'?'red':detail.status==='terminated'?'orange':'blue'}>{mapStatus(detail.status||'running')}</Tag></Text>
               <Text>开始时间：{detail.startedAt? new Date(detail.startedAt).toLocaleString() : '-'}</Text>
               <Text>结束时间：{detail.finishedAt? new Date(detail.finishedAt).toLocaleString() : '-'}</Text>
               <Text>用户问题：{detail.prompt || '-'}</Text>
               <Divider/>
-          {(() => {
-            const ExecCards = () => (
-              <div>
-                {(detail.execResults||[]).map((r:any, idx:number)=> (
-                  <Card key={idx} size="small" style={{ marginBottom: 8 }} title={`执行 ${idx+1}`}>
-                    <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                      {r?.text ? renderMarkdown(r.text) : <Text type="secondary">暂无</Text>}
-                    </div>
-                  </Card>
-                ))}
-                {(!detail.execResults || detail.execResults.length===0) && <Text type="secondary">暂无</Text>}
-              </div>
-            );
-
-            const ExecInnerTabs = () => {
-              const results = detail.execResults || [];
-              if (!results.length) return <Text type="secondary">暂无</Text>;
-              return (
-                <Tabs
-                  size="small"
-                  tabPosition="top"
-                  items={results.map((r:any, idx:number)=>({
-                    key: String(idx+1),
-                    label: `执行 ${idx+1}`,
+              <Tabs
+                defaultActiveKey="plan"
+                items={[
+                  {
+                    key: 'plan',
+                    label: '规划代理',
                     children: (
-                      <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-                        {r?.text ? renderMarkdown(r.text) : <Text type="secondary">暂无</Text>}
-                      </div>
-                    )
-                  }))}
-                />
-              );
-            };
-
-            return (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text type="secondary">展示方式</Text>
-                  <Segmented
-                    options={[{label:'选项卡', value:'tabs'}, {label:'折叠', value:'collapse'}]}
-                    value={detailViewMode}
-                    onChange={(v)=> setDetailViewMode(v as 'tabs' | 'collapse')}
-                  />
-                </div>
-
-                {detailViewMode === 'tabs' ? (
-                  <Tabs defaultActiveKey="summary" items={[
-                    {
-                      key: 'plan',
-                      label: '规划输出',
-                      children: (
-                        <div style={{ maxHeight: 280, overflowY: 'auto', background: '#fafafa', padding: 8, borderRadius: 6 }}>
-                          {detail.planText ? renderMarkdown(detail.planText) : <Text type="secondary">暂无</Text>}
-                        </div>
-                      )
-                    },
-                    {
-                      key: 'exec',
-                      label: '执行输出（并行）',
-                      children: (
-                        <div style={{ background: '#fafafa', padding: 8, borderRadius: 6 }}>
-                          <ExecInnerTabs />
-                        </div>
-                      )
-                    },
-                    {
-                      key: 'summary',
-                      label: '总结输出',
-                      children: (
-                        <div style={{ maxHeight: 280, overflowY: 'auto', background: '#fafafa', padding: 8, borderRadius: 6 }}>
-                          {detail.sumText ? renderMarkdown(detail.sumText) : <Text type="secondary">暂无</Text>}
-                        </div>
-                      )
-                    }
-                  ]} />
-                ) : (
-                  <Collapse defaultActiveKey={["summary"]}>
-                    <Collapse.Panel header="规划输出" key="plan">
-                      <div style={{ maxHeight: 280, overflowY: 'auto', background: '#fafafa', padding: 8, borderRadius: 6 }}>
+                      <div style={{ maxHeight: 320, overflowY: 'auto', background: '#fafafa', padding: 8, borderRadius: 6 }}>
                         {detail.planText ? renderMarkdown(detail.planText) : <Text type="secondary">暂无</Text>}
                       </div>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="执行输出（并行）" key="exec">
-                      <ExecCards />
-                    </Collapse.Panel>
-                    <Collapse.Panel header="总结输出" key="summary">
-                      <div style={{ maxHeight: 280, overflowY: 'auto', background: '#fafafa', padding: 8, borderRadius: 6 }}>
+                    )
+                  },
+                  {
+                    key: 'execute',
+                    label: '执行代理',
+                    children: (
+                      <div style={{ background: '#fafafa', padding: 8, borderRadius: 6 }}>
+                        {(detail.execResults && detail.execResults.length > 0) ? (
+                          <Tabs
+                            size="small"
+                            items={(detail.execResults as any[]).map((r, idx) => ({
+                              key: String(idx + 1),
+                              label: `通道 ${idx + 1}`,
+                              children: (
+                                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                                  {r?.text ? renderMarkdown(r.text) : <Text type="secondary">暂无</Text>}
+                                </div>
+                              )
+                            }))}
+                          />
+                        ) : (
+                          <Text type="secondary">暂无</Text>
+                        )}
+                      </div>
+                    )
+                  },
+                  {
+                    key: 'summary',
+                    label: '总结代理',
+                    children: (
+                      <div style={{ maxHeight: 320, overflowY: 'auto', background: '#fafafa', padding: 8, borderRadius: 6 }}>
                         {detail.sumText ? renderMarkdown(detail.sumText) : <Text type="secondary">暂无</Text>}
                       </div>
-                    </Collapse.Panel>
-                  </Collapse>
-                )}
-              </>
-            );
-          })()}
-        </Space>
-      ) : null}
-    </Modal>
-  </div>
-</AppLayout>
+                    )
+                  }
+                ]}
+              />
+            </Space>
+          ) : null}
+        </Modal>
+      </div>
+    </AppLayout>
   );
 }

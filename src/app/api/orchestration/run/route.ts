@@ -43,11 +43,12 @@ async function buildMcpServers() {
   }
 }
 
-async function runWithAgent(agentId: string, userPrompt: string, extraSystemPrompt?: string) {
+async function runWithAgent(agentId: string, userPrompt: string, extraSystemPrompt?: string, stage?: 'plan' | 'execute' | 'summarize') {
   const agent = await loadAgent(agentId);
   if (!agent) throw new Error(`未找到 Agent: ${agentId}`);
 
-  const model = await getDefaultModel();
+  // 1) 读取模型优先级：Agent 配置 > 全局默认
+  const model = (agent.llmConfig?.model as string) || (await getDefaultModel());
   const mcpServers = await buildMcpServers();
 
   const options: Options = {
@@ -58,6 +59,14 @@ async function runWithAgent(agentId: string, userPrompt: string, extraSystemProm
     env: { ANTHROPIC_MODEL: model },
   } as any;
 
+  // 2) 注入 Agent 级别参数（若存在）
+  if (agent.llmConfig?.parameters) {
+    const p = agent.llmConfig.parameters as Record<string, any>;
+    if (typeof p.temperature === 'number') (options as any).temperature = p.temperature;
+    if (typeof p.maxTokens === 'number') (options as any).maxTokens = p.maxTokens;
+    if (typeof p.topP === 'number') (options as any).topP = p.topP;
+  }
+
   const sys = [agent.systemPrompt || '', extraSystemPrompt || ''].filter(Boolean).join('\n\n');
   if (sys) (options as any).customSystemPrompt = sys;
 
@@ -66,6 +75,16 @@ async function runWithAgent(agentId: string, userPrompt: string, extraSystemProm
     (options as any).cwd = kbPaths[0];
     if (kbPaths.length > 1) (options as any).additionalDirectories = kbPaths.slice(1);
   }
+
+  // 记录关键信息用于对比验证
+  console.log('[Orchestration] 调用模型', {
+    stage,
+    agentId,
+    model: options.model,
+    temperature: (options as any).temperature,
+    maxTokens: (options as any).maxTokens,
+    topP: (options as any).topP,
+  });
 
   let text = '';
   for await (const event of query({ prompt: userPrompt, options })) {
@@ -100,7 +119,11 @@ export async function POST(req: Request) {
         await updateRun(runId, { status: 'running', startedAt, prompt: String(prompt) });
 
         // 1) 规划
-        const planText = await runWithAgent(planAgentId, String(prompt));
+        // 1) 规划
+        let current = await updateRun(runId, { status: 'running', startedAt, prompt: String(prompt) });
+        const planText = await runWithAgent(planAgentId, String(prompt), undefined, 'plan');
+        current = await updateRun(runId, { planText });
+        if (current.status === 'terminated') return;
         await updateRun(runId, { planText });
 
         // 2) 执行（串行）
@@ -109,16 +132,18 @@ export async function POST(req: Request) {
           const idx = i + 1;
           const agentId = executeAgentIds[i];
           const execPrompt = `请基于以下规划内容执行任务，给出清晰、可验证的产出：\n\n【规划内容】\n${planText}\n\n【用户任务】\n${String(prompt)}`;
-          const text = await runWithAgent(agentId, execPrompt);
+          const text = await runWithAgent(agentId, execPrompt, undefined, 'execute');
           execResults.push({ index: idx, text });
-          await updateRun(runId, { execResults: [...execResults] });
+          current = await updateRun(runId, { execResults: [...execResults] });
+          if (current.status === 'terminated') return;
         }
 
         // 3) 总结
         const mergedExec = execResults.map((r, i) => `【执行通道${i + 1}】\n${r.text}`).join('\n\n');
         const sumPrompt = `请基于以下执行结果输出“结论要点、可执行建议、可能风险与后续建议”：\n\n${mergedExec}\n\n【用户任务】\n${String(prompt)}`;
-        const sumText = await runWithAgent(summarizeAgentId, sumPrompt);
-        await updateRun(runId, { sumText });
+        const sumText = await runWithAgent(summarizeAgentId, sumPrompt, undefined, 'summarize');
+        current = await updateRun(runId, { sumText });
+        if (current.status === 'terminated') return;
 
         const rec: RunRecord = {
           runId,
@@ -141,4 +166,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: { message: e?.message || '启动失败' } }, { status: 500 });
   }
 }
-
