@@ -3,19 +3,7 @@
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Layout, Menu, Button, Space } from 'antd';
-import { 
-  DashboardOutlined, 
-  RobotOutlined, 
-  ShareAltOutlined, 
-  PlayCircleOutlined,
-  SettingOutlined,
-  PlusOutlined,
-  FileTextOutlined,
-  MenuOutlined,
-  MenuFoldOutlined,
-  ApiOutlined
-} from '@ant-design/icons';
-import { ExperimentOutlined } from '@ant-design/icons';
+import { DashboardOutlined, RobotOutlined, ShareAltOutlined, FileTextOutlined, MenuOutlined, MenuFoldOutlined, ApiOutlined } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
 
@@ -41,79 +29,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
       label: 'Agent 工厂',
       onClick: () => router.push('/agents'),
       children: [
-        {
-          key: 'agents-list',
-          label: 'Agent 列表',
-          onClick: () => router.push('/agents'),
-        },
-        {
-          key: 'agents-create',
-          label: '创建 Agent',
-          onClick: () => router.push('/agents/create'),
-        },
-        {
-          key: 'agents-templates',
-          label: '模板库',
-          onClick: () => router.push('/agents/templates'),
-        },
+        { key: 'agents-list', label: 'Agent 列表', onClick: () => router.push('/agents') },
+        { key: 'agents-create', label: '创建 Agent', onClick: () => router.push('/agents/create') },
+        { key: 'agents-templates', label: '模板', onClick: () => router.push('/agents/templates') },
       ],
     },
     {
       key: 'workflows',
       icon: <ShareAltOutlined />,
       label: '工作流编排',
-      onClick: () => router.push('/workflows'),
+      disabled: true,
       children: [
-        {
-          key: 'workflows-list',
-          label: '工作流列表',
-          onClick: () => router.push('/workflows'),
-        },
-        {
-          key: 'workflows-create',
-          label: '创建工作流',
-          onClick: () => router.push('/workflows/create'),
-        },
-        {
-          key: 'workflows-templates',
-          label: '模板库',
-          onClick: () => router.push('/workflows/templates'),
-        },
+        { key: 'workflows-list', label: '工作流列表', disabled: true },
+        { key: 'workflows-templates', label: '模板', disabled: true },
       ],
     },
-    {
-      key: 'executions',
-      icon: <PlayCircleOutlined />,
-      label: '执行监控',
-      onClick: () => router.push('/executions'),
-    },
-    {
-      key: 'mcp',
-      icon: <ApiOutlined />,
-      label: 'MCP 服务',
-      onClick: () => router.push('/mcp'),
-    },
-    {
-      key: 'orchestration',
-      icon: <ShareAltOutlined />,
-      label: '智能体编排',
-      onClick: () => router.push('/orchestration'),
-    },
-    {
-      key: 'demo',
-      icon: <ExperimentOutlined />,
-      label: '协调内核 Demo',
-      onClick: () => router.push('/demo/coordination'),
-    },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: '系统设置',
-      onClick: () => router.push('/settings'),
-    },
+    { key: 'mcp', icon: <ApiOutlined />, label: 'MCP 服务', onClick: () => router.push('/mcp') },
+    { key: 'orchestration', icon: <ShareAltOutlined />, label: '智能体编排', onClick: () => router.push('/orchestration') },
   ];
 
-  // 根据当前路径确定选中的菜单项
   const getSelectedKeys = () => {
     if (pathname === '/') return ['dashboard'];
     if (pathname.startsWith('/agents')) {
@@ -126,20 +60,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
     if (pathname.startsWith('/workflows')) {
       if (pathname === '/workflows') return ['workflows-list'];
-      if (pathname === '/workflows/create') return ['workflows-create'];
       if (pathname.startsWith('/workflows/templates')) return ['workflows-templates'];
       if (pathname.match(/^\/workflows\/[^\/]+/)) return ['workflows-list'];
       return ['workflows'];
     }
-    if (pathname.startsWith('/executions')) return ['executions'];
     if (pathname.startsWith('/mcp')) return ['mcp'];
     if (pathname.startsWith('/orchestration')) return ['orchestration'];
-    if (pathname.startsWith('/demo/coordination')) return ['demo'];
-    if (pathname.startsWith('/settings')) return ['settings'];
     return [];
   };
 
-  // 根据当前路径确定展开的菜单项
   const getOpenKeys = () => {
     if (pathname.startsWith('/agents')) return ['agents'];
     if (pathname.startsWith('/workflows')) return ['workflows'];
@@ -148,14 +77,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <Layout className="h-screen">
-      <Sider 
-        trigger={null} 
-        collapsible 
-        collapsed={collapsed}
-        className="border-r border-gray-200 shadow-lg"
-        width={240}
-        style={{ background: '#fff' }}
-      >
+      <Sider trigger={null} collapsible collapsed={collapsed} className="border-r border-gray-200 shadow-lg" width={240} style={{ background: '#fff' }}>
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center space-x-3">
             <div className="flex flex-shrink-0 justify-center items-center w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
@@ -169,7 +91,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             )}
           </div>
         </div>
-        
+
         <Menu
           theme="light"
           mode="inline"
@@ -177,12 +99,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           defaultOpenKeys={getOpenKeys()}
           items={menuItems}
           className="h-full border-none"
-          style={{ 
-            background: 'transparent',
-            borderRight: 0
-          }}
+          style={{ background: 'transparent', borderRight: 0 }}
           onClick={({ key }) => {
-            // 查找包括嵌套菜单在内的所有菜单项
             const findMenuItem = (items: any[], targetKey: string): any => {
               for (const item of items) {
                 if (item.key === targetKey) return item;
@@ -193,47 +111,29 @@ export default function AppLayout({ children }: AppLayoutProps) {
               }
               return null;
             };
-
-            const item = findMenuItem(menuItems, key);
-            if (item?.onClick) {
-              item.onClick();
-            }
+            const item = findMenuItem(menuItems as any, key as string);
+            if (item?.disabled) return;
+            if (item?.onClick) item.onClick();
           }}
         />
       </Sider>
 
       <Layout className="h-full">
         <Header className="flex justify-between items-center px-6 shadow-sm" style={{ height: '64px', flexShrink: 0 }}>
-          <Button
-            type="text"
-            icon={collapsed ? <MenuOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-lg"
-          />
-          
+          <Button type="text" icon={collapsed ? <MenuOutlined /> : <MenuFoldOutlined />} onClick={() => setCollapsed(!collapsed)} className="text-lg" />
+
           <Space>
-            <Button 
-              icon={<FileTextOutlined />}
-              onClick={() => window.open('http://localhost:5173', '_blank')}
-            >
+            <Button icon={<FileTextOutlined />} onClick={() => window.open('http://localhost:5173', '_blank')}>
               文档
-            </Button>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />}
-              onClick={() => router.push('/workflows/create')}
-            >
-              新建工作流
             </Button>
           </Space>
         </Header>
 
         <Content className="overflow-auto flex-1 bg-gray-50">
-          <div className="overflow-y-auto h-full">
-            {children}
-          </div>
+          <div className="overflow-y-auto h-full">{children}</div>
         </Content>
       </Layout>
     </Layout>
   );
 }
+

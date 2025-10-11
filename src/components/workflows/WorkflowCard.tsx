@@ -12,9 +12,10 @@ interface WorkflowCardProps {
   onEdit?: (workflow: WorkflowConfig) => void;
   onDelete?: (workflow: WorkflowConfig) => void;
   onExecute?: (workflow: WorkflowConfig) => void;
+  disabledActions?: boolean;
 }
 
-export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: WorkflowCardProps) {
+export function WorkflowCard({ workflow, onEdit, onDelete, onExecute, disabledActions }: WorkflowCardProps) {
   const router = useRouter();
 
   const handleEdit = () => {
@@ -48,7 +49,6 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
       const lastExecuted = new Date(workflow.metadata.lastExecuted);
       const now = new Date();
       const daysSinceExecution = (now.getTime() - lastExecuted.getTime()) / (1000 * 60 * 60 * 24);
-      
       if (daysSinceExecution < 1) return 'green';
       if (daysSinceExecution < 7) return 'orange';
       return 'red';
@@ -68,29 +68,27 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
       hoverable
       className="h-full workflow-card"
       actions={[
-        <Tooltip key="edit" title="编辑工作流">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={handleEdit}
-          />
+        <Tooltip key="edit" title={disabledActions ? '功能已禁用' : '编辑工作流'}>
+          <Button type="text" icon={<EditOutlined />} onClick={handleEdit} disabled={!!disabledActions} />
         </Tooltip>,
-        <Tooltip key="execute" title="执行工作流">
+        <Tooltip key="execute" title={disabledActions ? '功能已禁用' : '执行工作流'}>
           <Button
             type="text"
             icon={<PlayCircleOutlined />}
             onClick={handleExecute}
             className="text-green-600 hover:text-green-700"
+            disabled={!!disabledActions}
           />
         </Tooltip>,
-        <Tooltip key="delete" title="删除工作流">
+        <Tooltip key="delete" title={disabledActions ? '功能已禁用' : '删除工作流'}>
           <Button
             type="text"
             icon={<DeleteOutlined />}
             onClick={handleDelete}
             className="text-red-600 hover:text-red-700"
+            disabled={!!disabledActions}
           />
-        </Tooltip>
+        </Tooltip>,
       ]}
     >
       <div onClick={handleViewDetail} className="cursor-pointer">
@@ -102,26 +100,17 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
             <Space className="mb-2">
               <Badge
                 status={getStatusColor() as any}
-                text={
-                  <Text type="secondary" className="text-xs">
-                    {getStatusText()}
-                  </Text>
-                }
+                text={<Text type="secondary" className="text-xs">{getStatusText()}</Text>}
               />
             </Space>
           </div>
         </div>
 
-        <Paragraph 
-          type="secondary" 
-          className="text-sm !mb-3 line-clamp-2"
-          ellipsis={{ rows: 2 }}
-        >
+        <Paragraph type="secondary" className="text-sm !mb-3 line-clamp-2" ellipsis={{ rows: 2 }}>
           {workflow.description || '暂无描述'}
         </Paragraph>
 
         <Space direction="vertical" className="w-full" size="small">
-          {/* Agent 信息 */}
           <div className="flex justify-between items-center">
             <Space>
               <TeamOutlined />
@@ -132,14 +121,11 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
             {workflow.mainAgentId && (
               <Space>
                 <UserOutlined />
-                <Text className="text-xs text-gray-500">
-                  主 Agent
-                </Text>
+                <Text className="text-xs text-gray-500">主 Agent</Text>
               </Space>
             )}
           </div>
 
-          {/* 执行流程信息 */}
           <div className="flex justify-between items-center">
             <Space>
               <Text className="text-sm">
@@ -147,24 +133,15 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
               </Text>
             </Space>
             {workflow.metadata.executionCount > 0 && (
-              <Text className="text-xs text-gray-500">
-                执行 {workflow.metadata.executionCount} 次
-              </Text>
+              <Text className="text-xs text-gray-500">执行 {workflow.metadata.executionCount} 次</Text>
             )}
           </div>
 
-          {/* 配置标签 */}
           <div className="flex flex-wrap gap-1">
-            {workflow.configuration.autoRetry && (
-              <Tag color="blue">自动重试</Tag>
-            )}
-            {workflow.configuration.notifications && (
-              <Tag color="green">通知提醒</Tag>
-            )}
+            {workflow.configuration.autoRetry && <Tag color="blue">自动重试</Tag>}
+            {workflow.configuration.notifications && <Tag color="green">通知提醒</Tag>}
             {workflow.configuration.maxExecutionTime && (
-              <Tag color="orange">
-                超时 {Math.floor(workflow.configuration.maxExecutionTime / 1000)}s
-              </Tag>
+              <Tag color="orange">超时 {Math.floor(workflow.configuration.maxExecutionTime / 1000)}s</Tag>
             )}
           </div>
         </Space>
@@ -172,11 +149,9 @@ export function WorkflowCard({ workflow, onEdit, onDelete, onExecute }: Workflow
         <div className="pt-3 mt-3 border-t border-gray-100">
           <Space className="justify-between w-full">
             <Text type="secondary" className="text-xs">
-              创建于 {formatDistanceToNow(workflow.metadata.createdAt)}前
+              创建于{formatDistanceToNow(workflow.metadata.createdAt)}前
             </Text>
-            <Text type="secondary" className="text-xs">
-              v{workflow.metadata.version}
-            </Text>
+            <Text type="secondary" className="text-xs">v{workflow.metadata.version}</Text>
           </Space>
         </div>
       </div>
@@ -193,6 +168,8 @@ export const WorkflowCardMemo = memo(WorkflowCard, (prevProps, nextProps) => {
     prevProps.workflow.metadata.lastExecuted === nextProps.workflow.metadata.lastExecuted &&
     prevProps.workflow.agentIds.length === nextProps.workflow.agentIds.length &&
     prevProps.workflow.executionFlow.stages.length === nextProps.workflow.executionFlow.stages.length &&
-    prevProps.workflow.metadata.executionCount === nextProps.workflow.metadata.executionCount
+    prevProps.workflow.metadata.executionCount === nextProps.workflow.metadata.executionCount &&
+    prevProps.disabledActions === nextProps.disabledActions
   );
 });
+

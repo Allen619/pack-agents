@@ -361,4 +361,4 @@ Level 5 - 系统权限：+ 系统命令
 
 **掌握 Agent 工厂，您就掌握了 Pack Agents 的核心能力！**
 
-_下一步：[学习工作流编排](./workflow-orchestration.md)_
+_下一步：[学习工作流编排（置灰，仅浏览）](./workflow-orchestration.md)_

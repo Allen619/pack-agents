@@ -26,6 +26,7 @@ import {
   Welcome,
 } from '@ant-design/x';
 import markdownit from 'markdown-it';
+import hljs from 'highlight.js';
 import { AgentConfig } from '@/types';
 import { getAgentRoleColor } from '@/utils';
 
@@ -105,11 +106,26 @@ const copyToClipboard = async (text: string, messageId: string) => {
 
 
 // 初始化 markdown-it
-const md = markdownit({ html: true, breaks: true });
+const md = markdownit({
+  html: true,
+  breaks: true,
+  highlight: (code: string, lang: string) => {
+    try {
+      if (lang && hljs.getLanguage(lang)) {
+        return `<pre><code class="hljs ${lang}">${hljs.highlight(code, { language: lang }).value}</code></pre>`;
+      }
+      return `<pre><code class=\"hljs\">${hljs.highlightAuto(code).value}</code></pre>`;
+    } catch {
+      return `<pre><code class=\"hljs\">${markdownit().utils.escapeHtml(code)}</code></pre>`;
+    }
+  },
+});
 
 // Markdown 渲染组件
 const renderMarkdown = (content: string, onCopy?: (text: string) => void) => {
-  if (!content || content === '...') {
+  const normalized = (content || '').trim();
+  const cleaned = normalized.replace(/\(no content\)/g, '').trim();
+  if (!cleaned || cleaned === '...') {
     return <div className="text-gray-400">...</div>;
   }
 
@@ -158,7 +174,7 @@ const renderMarkdown = (content: string, onCopy?: (text: string) => void) => {
       <div
         dangerouslySetInnerHTML={{
           __html: renderWithCopyButtons(
-            md.render(content)
+            md.render(cleaned)
               .replace(/<blockquote>/g, '<blockquote class="pl-4 my-2 italic border-l-4 border-gray-300 bg-gray-50 py-2 pr-4 rounded">')
           )
         }}

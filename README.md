@@ -214,3 +214,129 @@ pack-agents/
 ---
 
 **Pack Agents** - 让 AI 工作流变得简单而强大 🚀
+# Pack Agents - 多 Agent 工作流管理平台
+
+> 基于 Claude Code SDK 的 AI 工作流管理平台，支持多 Agent 协作、可视化编排与集成。
+
+## 🌟 特性
+
+- 🤖 Agent 工厂：可视化创建和管理 AI Agent
+- 🔄 工作流编排（置灰）：当前版本仅支持浏览，暂不支持新建/执行/删除
+- 📊 实时监控：SSE 实时状态反馈（导航入口已下线，后续合并）
+- 🗃️ 文件存储：零配置的 JSON 文件存储
+- 🎨 现代化 UI：基于 Ant Design 的响应式界面
+- 🔧 Claude 集成：深度集成 Claude Code SDK
+
+## 🚀 快速开始
+
+### 环境要求
+
+- Node.js 18+
+- npm 或 yarn
+
+### 安装
+
+1. 克隆项目
+
+```bash
+git clone https://github.com/Allen619/pack-agents.git
+cd pack-agents
+```
+
+2. 安装依赖
+
+```bash
+npm install
+```
+
+3. 初始化配置系统
+
+```bash
+npm run init-config
+```
+
+4. 配置环境变量
+
+```bash
+cp .env.example .env.local
+# 编辑 .env.local 添加你的 API 密钥
+```
+
+5. 启动开发服务器
+
+```bash
+npm run dev
+```
+
+打开 http://localhost:3000 查看应用
+
+## 📌 当前版本说明（重要）
+
+- 协调内核 Demo 页面与相关用户文档已移除。
+- 工作流编排功能已置灰：页面保留浏览能力；“新建工作流”按钮（包含顶部右上角）已移除，卡片编辑/执行/删除操作禁用。
+- 左侧导航移除了“执行监控”和“系统设置”。
+- MCP 服务中心页面不再提示“写入 config/settings/mcp-servers.json”的文案。
+- 控制台（首页）已重排：移除“创建工作流”快捷入口与“执行监控”跳转链接，保留统计与最近活动概览。
+
+## 📁 项目结构
+
+```
+pack-agents/
+├── config/
+│   ├── agents/
+│   │   ├── templates/
+│   │   └── instances/
+│   ├── workflows/
+│   ├── executions/          # 执行记录（导航入口已移除）
+│   └── settings/
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── agents/
+│   │   ├── workflows/       # 工作流管理（置灰，仅浏览）
+│   │   └── mcp/
+│   ├── components/
+│   ├── lib/
+│   └── hooks/
+└── docs-site/
+```
+
+## 🔧 核心功能
+
+### Agent 工厂
+
+- 基于模板快速创建 Agent
+- 配置 LLM 提供商与参数
+- 管理工具权限与知识库路径
+- Agent 使用统计与性能监控
+
+### 工作流编排（置灰）
+
+- 可视化工作流设计界面（当前版本仅浏览）
+- 串行/并行、依赖管理与模板化（后续恢复）
+
+## 🛠️ 开发指引
+
+### 添加新的 Agent 模板
+
+1. 在 `config/agents/templates/` 目录创建 JSON 文件
+2. 定义 Agent 的角色、提示词与工具
+3. 重启应用加载新模板
+
+### 扩展 API 接口
+
+1. 在 `src/app/api/` 目录下创建新的路由文件
+2. 实现 GET、POST、PUT、DELETE 方法
+3. 使用统一 `ApiResponse` 格式
+
+## 🤝 贡献
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/xxx`)
+3. 提交更改 (`git commit -m 'feat: xxx'`)
+4. 推送分支 (`git push origin feature/xxx`)
+5. 提交 Pull Request
+
+## 📄 许可证
+
+MIT，详见 LICENSE。

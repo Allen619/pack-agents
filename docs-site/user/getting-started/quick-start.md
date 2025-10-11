@@ -153,7 +153,7 @@ function getData(id) {
 
 ### 立即尝试
 
-- [创建工作流](../core-features/workflow-orchestration.md) - 让多个 Agent 协同工作
+- [工作流编排（置灰，仅浏览）](../core-features/workflow-orchestration.md) - 了解多 Agent 协作设计，当前版本暂不支持新建/执行
 - [浏览模板库](../core-features/agent-factory.md#使用模板创建) - 使用预设模板快速创建
 
 ### 深入学习

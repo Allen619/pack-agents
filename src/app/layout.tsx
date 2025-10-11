@@ -7,6 +7,7 @@ import PerformanceProvider from '@/components/performance/PerformanceProvider';
 import QueryProvider from '@/components/providers/QueryProvider';
 import dynamic from 'next/dynamic';
 import '@/styles/globals.css';
+import 'highlight.js/styles/github.css';
 
 const ClickInspector = dynamic(() => import('@/components/dev/ClickInspector'), {
   ssr: false,
