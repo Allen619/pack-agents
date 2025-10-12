@@ -272,7 +272,7 @@ export function AgentConfigForm({
                   rules={[{ required: true, message: '请选择助手角色' }]}
                 >
                   <Select placeholder="选择角色">
-                    <Option value="main">主管 Agent</Option>
+                    <Option value="main">规划 Agent</Option>
                     <Option value="sub">子执行 Agent</Option>
                     <Option value="synthesis">总结 Agent</Option>
                   </Select>

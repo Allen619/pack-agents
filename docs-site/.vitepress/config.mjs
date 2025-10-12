@@ -34,9 +34,9 @@ export default defineConfig({
           text: '核心功能',
           collapsed: false,
           items: [
-            { text: 'Agent 工厂', link: '/user/core-features/agent-factory' },
-            { text: 'Agent 聊天', link: '/user/core-features/agent-chat' },
-            { text: '工作流编排', link: '/user/core-features/workflow-orchestration' },
+            { text: '模型助手工厂', link: '/user/core-features/agent-factory' },
+            { text: '模型助手聊天', link: '/user/core-features/agent-chat' },
+            { text: '智能体编排', link: '/user/core-features/agent-orchestration' },
             { text: '实用案例', link: '/user/core-features/use-cases' },
           ],
         },
@@ -52,7 +52,17 @@ export default defineConfig({
           collapsed: false,
           items: [
             { text: 'Agent 设计', link: '/user/best-practices/agent-design' },
-            { text: '协调内核 Demo', link: '/user/advanced/coordination-demo-guide' },
+          ],
+        },
+        {
+          text: '后期规划',
+          collapsed: false,
+          items: [
+            { text: '智能体编排规划', link: '/user/roadmap/agent-orchestration' },
+            { text: 'MCP 导入增强', link: '/user/roadmap/mcp-import' },
+            { text: '模型助手扩展', link: '/user/roadmap/model-assistant' },
+            { text: 'UI/UX 美化', link: '/user/roadmap/ui-ux' },
+            { text: '国际化支持', link: '/user/roadmap/i18n' },
           ],
         },
         {

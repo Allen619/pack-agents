@@ -2,12 +2,9 @@
 layout: home
 
 hero:
-  name: "Pack Agents"
-  text: "多智能体工作流管理平台"
-  tagline: "企业级 AI Agent 协作解决方案，让智能体团队为您工作"
-  image:
-    src: /logo.svg
-    alt: Pack Agents
+  name: 'Pack Agents'
+  text: '多智能体工作流管理平台'
+  tagline: '企业级 AI Agent 协作解决方案，让智能体团队为您工作'
   actions:
     - theme: brand
       text: 快速开始
@@ -18,11 +15,11 @@ hero:
 
 features:
   - icon: 🤖
-    title: Agent 工厂
+    title: 模型助手工厂
     details: 可视化创建和配置智能体，支持多种 LLM 模型和自定义工具集成
   - icon: 🔄
-    title: 工作流编排
-    details: 拖拽式工作流设计，支持并行执行、条件分支和复杂依赖关系
+    title: 智能体编排
+    details: 规划-执行-总结三阶段协作，支持多Agent并行处理和实时交互确认
   - icon: 📊
     title: 实时监控
     details: 全程追踪执行状态，可视化展示工作流进展和性能指标

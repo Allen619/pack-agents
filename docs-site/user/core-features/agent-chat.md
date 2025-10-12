@@ -1,30 +1,30 @@
 ---
-title: Agent 聊天
+title: 模型助手 聊天
 description: 基于 Claude Code TypeScript SDK 的低延迟流式对话
 ---
 
-# Agent 聊天
+# 模型助手 聊天
 
 基于 `@anthropic-ai/claude-code` 的 `query({ prompt, options })` 流式接口，实现低延迟的增量输出对话。
 
 ## 功能概览
-- 访问 `/agents/{agentId}/chat` 打开任一 Agent 的专属对话页。
+- 访问 `/agents/{agentId}/chat` 打开任一 模型助手 的专属对话页。
 - 前端通过 NDJSON 流接收响应，边到边渲染（delta → done）。
-- 每次请求自动继承 Agent 的系统提示词、工具权限和知识库路径。
+- 每次请求自动继承 模型助手 的系统提示词、工具权限和知识库路径。
 - 支持中断本次生成、清空上下文、复制代码片段等。
 
 ## 前置条件
-1. 模型与提供商：在 Agent 设置中选择 `claude`，填写模型（如 `claude-sonnet-4`）。
+1. 模型与提供商：在 模型助手 设置中选择 `claude`，填写模型（如 `claude-sonnet-4`）。
 2. API Key：
-   - 方式 A：在 Agent 中填写 `llmConfig.apiKey`（直连）。
-   - 方式 B（推荐）：在环境中导出 `CLAUDE_API_KEY`，并在 Agent 中填写 `llmConfig.apiKeyRef=CLAUDE_API_KEY`。
-3. 知识库（可选）：在 Agent 配置中添加 `knowledgeBasePaths`，允许 Claude Code 会话内读取本地文档。
+   - 方式 A：在 模型助手 中填写 `llmConfig.apiKey`（直连）。
+   - 方式 B（推荐）：在环境中导出 `CLAUDE_API_KEY`，并在 模型助手 中填写 `llmConfig.apiKeyRef=CLAUDE_API_KEY`。
+3. 知识库（可选）：在 模型助手 配置中添加 `knowledgeBasePaths`，允许 Claude Code 会话内读取本地文档。
 4. 工具策略：如需放宽工具，修改 `config/settings/tools-config.json`（Read / Edit / Write / Glob / Grep / Bash 等）。
 
 提示：完整 SDK 参考请查看仓库内 `docs/claude-code-docs`。
 
 ## 对话流程
-1. 在 Agent 列表选择目标，点击“聊天”。
+1. 在 模型助手 列表选择目标，点击“聊天”。
 2. 输入问题点击发送，UI 立即追加一条“助手(流式)”占位消息。
 3. 服务端流返回 NDJSON：每条 `delta` 增量拼接到助手消息；收到 `done` 结束流并固化内容。
 4. 点击“停止”通过 `AbortController` 中断；点击“清空”重置到欢迎消息。
@@ -73,7 +73,7 @@ Content-Type: application/json
   - `plan`：仅生成操作计划，不真正执行。
 
 ## 模型与环境变量映射
-服务端对接 Claude Code SDK 时，会从 Agent 配置读取：
+服务端对接 Claude Code SDK 时，会从 模型助手 配置读取：
 - `llmConfig.baseUrl` → 映射为环境变量 `ANTHROPIC_BASE_URL`
 - `llmConfig.apiKey` 或 `llmConfig.apiKeyRef` → 映射为 `ANTHROPIC_AUTH_TOKEN`
 - `llmConfig.model` → 映射为 `ANTHROPIC_MODEL`
@@ -100,8 +100,8 @@ $env:CLAUDE_API_KEY = 'sk-ant-***'
 
 ## 常见问题
 - 找不到 API Key：
-  - 方式 A：在 Agent 中填写 `llmConfig.apiKey`。
-  - 方式 B：在系统中导出密钥为环境变量，并在 Agent 中设置 `llmConfig.apiKeyRef` 指向它（推荐）。
+  - 方式 A：在 模型助手 中填写 `llmConfig.apiKey`。
+  - 方式 B：在系统中导出密钥为环境变量，并在 模型助手 中设置 `llmConfig.apiKeyRef` 指向它（推荐）。
 - 无输出/不流式：确认主机已安装 Claude Code CLI，必要时运行 `claude doctor` 诊断；检查浏览器网络面板是否为 `text/x-ndjson`。
 - 知识库无效：确认路径存在且服务进程可读写；Windows 下注意转义路径分隔符。
 

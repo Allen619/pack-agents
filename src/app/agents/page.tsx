@@ -98,7 +98,7 @@ export default function AgentsPage() {
       <div className="p-6">
         <PageHeader
           title="模型助手"
-          description="创建和管理您的 AI Agent"
+          description="创建和管理您的 AI 模型助手"
           extra={
             <Space>
               <Button 
@@ -115,7 +115,7 @@ export default function AgentsPage() {
               </Link>
               <Link href="/agents/create">
                 <Button type="primary" icon={<PlusOutlined />}>
-                  创建 Agent
+                  创建模型助手
                 </Button>
               </Link>
             </Space>
@@ -123,30 +123,30 @@ export default function AgentsPage() {
         >
           {/* 统计信息 */}
           <div className="grid grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="p-4 bg-white rounded-lg border">
               <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-              <div className="text-sm text-gray-500">总 Agent 数</div>
+              <div className="text-sm text-gray-500">模型总数</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="p-4 bg-white rounded-lg border">
               <div className="text-2xl font-bold text-green-600">{stats.byRole.main || 0}</div>
-              <div className="text-sm text-gray-500">主管理 Agent</div>
+              <div className="text-sm text-gray-500">主管理模型数</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="p-4 bg-white rounded-lg border">
               <div className="text-2xl font-bold text-blue-600">{stats.byRole.sub || 0}</div>
-              <div className="text-sm text-gray-500">子执行 Agent</div>
+              <div className="text-sm text-gray-500">子执行模型数</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="p-4 bg-white rounded-lg border">
               <div className="text-2xl font-bold text-purple-600">{stats.byRole.synthesis || 0}</div>
-              <div className="text-sm text-gray-500">总结 Agent</div>
+              <div className="text-sm text-gray-500">总结模型数</div>
             </div>
           </div>
 
           {/* 搜索和过滤 */}
-          <div className="bg-white p-4 rounded-lg border mb-6">
+          <div className="p-4 mb-6 bg-white rounded-lg border">
             <Row gutter={16} align="middle">
               <Col span={12}>
                 <Search
-                  placeholder="搜索 Agent 名称、描述或标签..."
+                  placeholder="搜索模型助手名称、描述或标签..."
                   allowClear
                   enterButton={<SearchOutlined />}
                   size="large"
@@ -164,14 +164,14 @@ export default function AgentsPage() {
                   suffixIcon={<FilterOutlined />}
                 >
                   <Option value="all">全部角色</Option>
-                  <Option value="main">主管理</Option>
-                  <Option value="sub">子执行</Option>
-                  <Option value="synthesis">总结</Option>
+                  <Option value="main">规划代理</Option>
+                  <Option value="sub">执行代理</Option>
+                  <Option value="synthesis">总结代理</Option>
                 </Select>
               </Col>
               <Col span={6}>
                 <div className="text-sm text-gray-500">
-                  找到 {filteredAgents.length} 个 Agent
+                  找到 {filteredAgents.length} 个模型助手
                 </div>
               </Col>
             </Row>
@@ -197,12 +197,12 @@ export default function AgentsPage() {
         {/* Agent 列表 */}
         <LoadingState loading={agentsLoading}>
           {filteredAgents.length === 0 ? (
-            <div className="bg-white rounded-lg border p-8">
+            <div className="p-8 bg-white rounded-lg border">
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
                   agents.length === 0 
-                    ? "还没有创建任何 Agent" 
+                    ? "还没有创建任何模型助手" 
                     : "没有找到匹配的 Agent"
                 }
               >
@@ -212,7 +212,7 @@ export default function AgentsPage() {
                       <Button>从模板创建</Button>
                     </Link>
                     <Link href="/agents/create">
-                      <Button type="primary">创建 Agent</Button>
+                      <Button type="primary">创建模型助手</Button>
                     </Link>
                   </Space>
                 )}

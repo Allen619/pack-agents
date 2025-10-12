@@ -48,7 +48,7 @@ description: Pack Agents 使用过程中的常见问题和解决方案
 
 **本地存储**:
 
-- 所有配置和工作流数据存储在本地
+- 所有配置和智能体编排数据存储在本地
 - 不会上传到外部服务器
 - 您完全控制数据的访问权限
 
@@ -66,21 +66,21 @@ description: Pack Agents 使用过程中的常见问题和解决方案
 
 ---
 
-### Q4: 可以创建多少个 Agent？
+### Q4: 可以创建多少个 模型助手？
 
 **A**: 没有硬性限制，但建议合理规划：
 
 **技术限制**:
 
 - 取决于您的硬件配置
-- 每个 Agent 占用少量存储空间
+- 每个 模型助手 占用少量存储空间
 - 并发执行受资源限制
 
 **最佳实践**:
 
-- 建议单个团队维护 10-20 个核心 Agent
+- 建议单个团队维护 10-20 个核心 模型助手
 - 使用模板复用常见配置
-- 定期清理不再使用的 Agent
+- 定期清理不再使用的 模型助手
 - 按项目或团队组织管理
 
 ---
@@ -185,7 +185,7 @@ nslookup api.anthropic.com
 
 **配置优化**:
 
-- 减少并行执行的 Agent 数量
+- 减少并行执行的 模型助手 数量
 - 优化知识库文件大小（建议单文件 < 1MB）
 - 使用更快的 AI 模型（如 Claude-3-Haiku）
 - 启用缓存机制
@@ -234,7 +234,7 @@ tar -czf pack-agents-backup-$(date +%Y%m%d).tar.gz ./config
 
 ---
 
-### Q9: Agent 执行失败怎么办？
+### Q9: 模型助手 执行失败怎么办？
 
 **A**: 系统化的故障诊断流程：
 
@@ -243,7 +243,7 @@ tar -czf pack-agents-backup-$(date +%Y%m%d).tar.gz ./config
 ```checklist
 □ API 密钥是否正确且未过期
 □ 网络连接是否正常
-□ Agent 配置是否完整
+□ 模型助手 配置是否完整
 □ 知识库路径是否存在
 □ 工具权限是否合适
 ```
@@ -254,23 +254,23 @@ tar -czf pack-agents-backup-$(date +%Y%m%d).tar.gz ./config
 # 查看最新的错误日志
 tail -f ./logs/error.log
 
-# 查看特定 Agent 的日志
+# 查看特定 模型助手 的日志
 grep "agent_id_here" ./logs/execution.log
 ```
 
 **第三步：逐步调试**
 
-1. 先测试单个 Agent 的聊天功能
+1. 先测试单个 模型助手 的聊天功能
 2. 检查系统提示是否清晰
 3. 验证知识库内容是否正确
-4. 测试简化版的工作流
+4. 测试简化版的智能体编排
 
 **常见错误类型**:
 | 错误类型 | 可能原因 | 解决方法 |
 |----------|----------|----------|
 | API_KEY_INVALID | 密钥错误或过期 | 重新配置有效密钥 |
 | NETWORK_TIMEOUT | 网络连接问题 | 检查网络和防火墙设置 |
-| INSUFFICIENT_PERMISSIONS | 权限不足 | 调整 Agent 工具权限 |
+| INSUFFICIENT_PERMISSIONS | 权限不足 | 调整 模型助手 工具权限 |
 | KNOWLEDGE_BASE_ERROR | 知识库访问失败 | 检查文件路径和权限 |
 
 ---
@@ -320,7 +320,7 @@ grep "agent_id_here" ./logs/execution.log
 
 ## 🔧 技术问题
 
-### Q11: 如何自定义 Agent 的功能？
+### Q11: 如何自定义 模型助手 的功能？
 
 **A**: 多种自定义方式：
 
@@ -358,7 +358,7 @@ grep "agent_id_here" ./logs/execution.log
 
 ---
 
-### Q12: 工作流可以自动执行吗？
+### Q12: 智能体编排可以自动执行吗？
 
 **A**: 支持多种自动化触发方式：
 
@@ -379,8 +379,8 @@ grep "agent_id_here" ./logs/execution.log
 
 ```bash
 # 使用 cron 定时执行
-# 每天早上8点运行数据分析工作流
-0 8 * * * curl -X POST "http://localhost:3000/api/workflows/daily-analysis/execute"
+# 每天早上8点运行数据分析智能体编排
+0 8 * * * curl -X POST "http://localhost:3000/api/orchestration/daily-analysis/execute"
 
 # 使用 GitHub Actions 触发
 # 代码提交时自动执行质量检查
@@ -391,9 +391,9 @@ jobs:
   quality-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Pack Agents Workflow
+      - name: Trigger Pack Agents Orchestration
         run: |
-          curl -X POST "${{ secrets.PACK_AGENTS_URL }}/api/workflows/code-quality/execute" \
+          curl -X POST "${{ secrets.PACK_AGENTS_URL }}/api/orchestration/code-quality/execute" \
                -H "Authorization: Bearer ${{ secrets.API_TOKEN }}"
 ```
 
@@ -432,7 +432,7 @@ window.__performance__.getReport()
 **优化建议**:
 
 - 启用浏览器缓存
-- 减少并发 Agent 数量
+- 减少并发 模型助手 数量
 - 优化知识库文件大小
 - 使用 CDN 加速静态资源
 

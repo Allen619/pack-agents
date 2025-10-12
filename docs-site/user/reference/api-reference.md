@@ -46,9 +46,9 @@ http://localhost:3000/api
 }
 ```
 
-## 🤖 Agent 管理 API
+## 🤖 模型助手 管理 API
 
-### 获取 Agent 列表
+### 获取 模型助手 列表
 
 ```http
 GET /api/agents
@@ -89,7 +89,7 @@ GET /api/agents
 }
 ```
 
-### 创建 Agent
+### 创建 模型助手
 
 ```http
 POST /api/agents
@@ -137,11 +137,11 @@ POST /api/agents
     "status": "created",
     "created_at": "2025-09-20T14:30:00Z"
   },
-  "message": "Agent 创建成功"
+  "message": "模型助手 创建成功"
 }
 ```
 
-### 获取 Agent 详情
+### 获取 模型助手 详情
 
 ```http
 GET /api/agents/{agent_id}
@@ -150,15 +150,15 @@ GET /api/agents/{agent_id}
 **路径参数**：
 | 参数 | 类型 | 必填 | 描述 |
 |------|------|------|------|
-| agent_id | string | 是 | Agent ID |
+| agent_id | string | 是 | 模型助手 ID |
 
-### 更新 Agent
+### 更新 模型助手
 
 ```http
 PUT /api/agents/{agent_id}
 ```
 
-### 删除 Agent
+### 删除 模型助手
 
 ```http
 DELETE /api/agents/{agent_id}
@@ -392,7 +392,7 @@ GET /api/health
 
 ## 🔍 查询和搜索 API
 
-### 搜索 Agent
+### 搜索 模型助手
 
 ```http
 GET /api/search/agents?q={query}
@@ -483,15 +483,15 @@ GET /api/logs/system
 
 ### 业务错误码
 
-| 错误码                  | 说明          |
-| ----------------------- | ------------- |
-| AGENT_NOT_FOUND         | Agent 不存在  |
-| WORKFLOW_NOT_FOUND      | 工作流不存在  |
-| EXECUTION_FAILED        | 执行失败      |
-| VALIDATION_ERROR        | 参数验证错误  |
-| PERMISSION_DENIED       | 权限不足      |
-| RESOURCE_LIMIT_EXCEEDED | 资源限制超出  |
-| AI_SERVICE_UNAVAILABLE  | AI 服务不可用 |
+| 错误码                  | 说明            |
+| ----------------------- | --------------- |
+| AGENT_NOT_FOUND         | 模型助手 不存在 |
+| WORKFLOW_NOT_FOUND      | 工作流不存在    |
+| EXECUTION_FAILED        | 执行失败        |
+| VALIDATION_ERROR        | 参数验证错误    |
+| PERMISSION_DENIED       | 权限不足        |
+| RESOURCE_LIMIT_EXCEEDED | 资源限制超出    |
+| AI_SERVICE_UNAVAILABLE  | AI 服务不可用   |
 
 ## 📚 SDK 和客户端
 
@@ -504,13 +504,13 @@ npm install @pack-agents/client
 **使用示例**：
 
 ```javascript
-import { PackAgentsClient } from '@pack-agents/client';
+import { Pack模型助手sClient } from '@pack-agents/client';
 
-const client = new PackAgentsClient({
+const client = new Pack模型助手sClient({
   baseUrl: 'http://localhost:3000/api',
 });
 
-// 获取 Agent 列表
+// 获取 模型助手 列表
 const agents = await client.agents.list();
 
 // 创建工作流
@@ -536,11 +536,11 @@ pip install pack-agents-client
 **使用示例**：
 
 ```python
-from pack_agents import PackAgentsClient
+from pack_agents import Pack模型助手sClient
 
-client = PackAgentsClient(base_url="http://localhost:3000/api")
+client = Pack模型助手sClient(base_url="http://localhost:3000/api")
 
-# 获取 Agent 列表
+# 获取 模型助手 列表
 agents = client.agents.list()
 
 # 创建并执行工作流
