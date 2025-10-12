@@ -11,6 +11,11 @@ export type RunRecord = {
   planText?: string;
   execResults?: Array<{ index: number; text: string }>;
   sumText?: string;
+  // 规划阶段的人机确认控制
+  awaitingPlanConfirm?: boolean;
+  planConfirmed?: boolean;
+  planConfirmDeadline?: number;
+  planEditing?: boolean;
 };
 
 const BASE_DIR = path.join(process.cwd(), 'data', 'coordination-runs');

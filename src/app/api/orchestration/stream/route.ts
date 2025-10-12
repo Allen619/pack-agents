@@ -19,7 +19,9 @@ export async function GET(req: Request) {
       let sentPlan = false;
       let sentExecCount = 0;
       let sentSummary = false;
+      let sentAwaitPlan = false;
       let closed = false;
+      let sentPlanConfirmed = false;
 
       const timer = setInterval(async () => {
         try {
@@ -30,6 +32,16 @@ export async function GET(req: Request) {
             send({ type: 'stage', stage: 'plan', at: Date.now(), text: '规划进行中' });
             send({ type: 'delta', stage: 'plan', at: Date.now(), text: rec.planText.slice(0, 2000) });
             sentPlan = true;
+          }
+
+          if (!sentAwaitPlan && rec.awaitingPlanConfirm) {
+            send({ type: 'await', stage: 'plan', at: Date.now(), deadline: rec.planConfirmDeadline || (Date.now() + 60_000), text: '等待确认规划' });
+            sentAwaitPlan = true;
+          }
+
+          if (!sentPlanConfirmed && rec.planConfirmed) {
+            send({ type: 'info', stage: 'plan', at: Date.now(), text: '已确认计划' });
+            sentPlanConfirmed = true;
           }
 
           const execLen = Array.isArray(rec.execResults) ? rec.execResults.length : 0;

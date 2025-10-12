@@ -1,7 +1,7 @@
 // UTF-8
 import { NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
-import { saveRun, updateRun, type RunRecord } from '@/lib/orchestration/store';
+import { saveRun, updateRun, readRun, type RunRecord } from '@/lib/orchestration/store';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { ConfigManager } from '@/lib/storage/config-manager';
@@ -119,19 +119,43 @@ export async function POST(req: Request) {
         await updateRun(runId, { status: 'running', startedAt, prompt: String(prompt) });
 
         // 1) 规划
-        // 1) 规划
         let current = await updateRun(runId, { status: 'running', startedAt, prompt: String(prompt) });
         const planText = await runWithAgent(planAgentId, String(prompt), undefined, 'plan');
-        current = await updateRun(runId, { planText });
+        current = await updateRun(runId, {
+          planText,
+          awaitingPlanConfirm: true,
+          planConfirmed: false,
+          planConfirmDeadline: Date.now() + 60_000,
+          planEditing: false,
+        });
         if (current.status === 'terminated') return;
-        await updateRun(runId, { planText });
+
+        // 等待用户确认或超时自动确认（最多 60 秒，编辑期间不计时）
+        let waited = 0;
+        while (waited < 60_000) {
+          const rec = await readRun(runId);
+          if (rec?.status === 'terminated') return;
+          if (rec?.planConfirmed) break;
+          if (rec?.planEditing) {
+            // 编辑中：暂停计时，仅等待
+            await new Promise((r) => setTimeout(r, 1000));
+            continue;
+          }
+          await new Promise((r) => setTimeout(r, 1000));
+          waited += 1000;
+        }
+        // 超时则自动确认
+        current = await updateRun(runId, { planConfirmed: true, awaitingPlanConfirm: false });
 
         // 2) 执行（串行）
         const execResults: Array<{ index: number; text: string }> = [];
         for (let i = 0; i < executeAgentIds.length; i++) {
           const idx = i + 1;
           const agentId = executeAgentIds[i];
-          const execPrompt = `请基于以下规划内容执行任务，给出清晰、可验证的产出：\n\n【规划内容】\n${planText}\n\n【用户任务】\n${String(prompt)}`;
+          // 使用（可能被用户修改后的）最新规划内容
+          const latest = await readRun(runId);
+          const planForExec = latest?.planText || planText;
+          const execPrompt = `请基于以下规划内容执行任务，给出清晰、可验证的产出：\n\n【规划内容】\n${planForExec}\n\n【用户任务】\n${String(prompt)}`;
           const text = await runWithAgent(agentId, execPrompt, undefined, 'execute');
           execResults.push({ index: idx, text });
           current = await updateRun(runId, { execResults: [...execResults] });
